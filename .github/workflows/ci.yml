@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Regression suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run regression suite
+        run: npm test
+
+  guard:
+    name: Repository guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Repository data guard
+        run: node tools/pii-scan.js
+
+      - name: Verify the demo customer master is reproducible
+        run: |
+          python3 tools/generate-customers.py > /tmp/regen.json
+          if ! diff -q fixtures/customers.demo.json /tmp/regen.json > /dev/null; then
+            echo "::error::fixtures/customers.demo.json does not match the generator output."
+            echo "Regenerate it with: python3 tools/generate-customers.py > fixtures/customers.demo.json"
+            exit 1
+          fi
+          echo "Demo master matches its generator."
+
+      - name: Block counter-machine backups
+        run: |
+          if git ls-files | grep -E '\.backup\.json$|^data/'; then
+            echo "::error::A localStorage backup appears to be committed."
+            echo "These contain customer invoices. See docs/08-data-protection.md."
+            exit 1
+          fi
+          echo "No backup files committed."
+
+      - name: Check the app is still a single self-contained file
+        run: |
+          F=app/solitair-invoicing.html
+          if grep -nE '<script[^>]+src=|<link[^>]+href="http' "$F"; then
+            echo "::error::External asset reference found. The app must run offline from file://."
+            exit 1
+          fi
+          echo "No external asset references."

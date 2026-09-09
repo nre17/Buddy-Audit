@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "LLA_INV_DEMO_000",
+      "awb": "780-30900001",
+      "pcs": 51,
+      "wt": 157,
+      "dir": "Export",
+      "loc": "TO NBO",
+      "fltno": "8G 426",
+      "dep": "2026-09-10T03:23",
+      "addedBy": "Counter 1",
+      "addedTs": "2026-09-09T20:23:57.213527Z",
+      "auto": true
+    },
+    {
+      "id": "LL_DEMO_002",
+      "awb": "780-30900017",
+      "pcs": 12,
+      "wt": 410,
+      "dir": "Import",
+      "loc": "FROM NBO",
+      "fltno": "8G 412",
+      "dep": "2026-09-09T23:23",
+      "addedBy": "Counter 2",
+      "addedTs": "2026-09-09T20:23:57.213536Z",
+      "auto": false
+    }
+  ],
+  "cleared": []
+}

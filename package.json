@@ -1,0 +1,21 @@
+{
+  "name": "solitair-invoicing",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Offline single-file charge advice and invoicing system for the SolitAir Cargo counter at DWC",
+  "scripts": {
+    "test": "node tests/run-all.js",
+    "test:one": "node",
+    "scan": "node tools/pii-scan.js",
+    "verify": "node tools/pii-scan.js && node tests/run-all.js",
+    "customers": "python3 tools/generate-customers.py > fixtures/customers.demo.json",
+    "open": "node -e \"console.log('file://' + require('path').resolve('app/solitair-invoicing.html'))\""
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

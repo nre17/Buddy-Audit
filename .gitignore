@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Test output
+tests/output/
+tests/**/*.png
+tests/**/*.trace.zip
+playwright-report/
+test-results/
+
+# --- NEVER COMMIT LIVE DATA ---
+# localStorage exports contain real customer invoices, names and amounts.
+*.backup.json
+data/
+*-live.json
+solitair_db*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
