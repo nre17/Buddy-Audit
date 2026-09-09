@@ -21,6 +21,7 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-08](#a-08) | P2 | Deleting an invoice does not release its reference number | S |
 | [A-10](#a-10) | P2 | No responsive layout; unusable on a tablet or phone | L |
 | [A-15](#a-15) | P2 | Form-field styling is inlined in 22 places, overriding the CSS that already exists | M |
+| [A-20](#a-20) | **P1** | Every local copy of the app shares one data store, so a demo copy can write into the live register | S (process) + M (code) |
 
 ## Closed
 
@@ -334,18 +335,68 @@ before and after.
 
 ---
 
+## A-20 — Every local copy shares one data store {#a-20}
+
+**P1. Operational, with a route to real financial damage.**
+
+Chrome treats every file opened from the local disk as the same origin
+(`file://`), so `localStorage` belongs to the **browser profile**, not to the
+file's name or folder. Verified: a copy of the app in one folder and a copy in
+another, with different filenames, read and write the same `solitair_db` key.
+
+One consequence is helpful - replacing the application file during an upgrade
+cannot lose data, and the file may be renamed or moved freely.
+
+The other is not. **A second copy of the app opened in the counter's browser is
+operating on the live register.** Measured, on a profile holding one real
+invoice and an opening balance of 500:
+
+| | Before | After opening a second copy and clicking *Load Sample Data* |
+|---|---|---|
+| Invoices in the register | 1 | **10** |
+| Opening balance | 500 | **200** |
+
+The real invoice survived, but nine fabricated ones joined the ledger and the
+cash position was silently rewritten. *Erase All Data* in that second copy would
+have taken everything.
+
+This is easy to trigger by accident: downloading a copy from the repository to
+"have a look", keeping the previous version alongside a new one after an
+upgrade, or opening a training copy on the counter machine.
+
+**Mitigation now (process):** only ever open the counter's own copy in the
+counter's browser. Demonstrations, training and version testing go in a separate
+browser or a separate browser profile. Documented in
+[`06-operations-runbook.md`](06-operations-runbook.md) section 4.
+
+**Fix to schedule (code):** give the storage key an instance identity, so a copy
+cannot silently adopt another's data. On first run, write a `DB.instanceId` and
+record the file's `location.pathname` alongside it; on boot, if the stored path
+differs from the current one, do not load - show a blocking prompt asking whether
+this is a moved counter file (adopt the data) or a second copy (start empty, or
+open read-only). That keeps the upgrade-in-place case working while making the
+dangerous case impossible to hit by accident.
+
+Note the earlier documentation had this backwards, stating that each path had its
+own storage. It does not, and the guidance has been corrected.
+
+---
+
 ## Recommended order
 
 The housekeeping pass is done. What remains, in order:
 
 1. **Today, if not already running:** the daily backup routine (A-01) - process
    only, no code. It is still the largest risk in the system.
-2. **First PR:** A-02 (references) and A-04 (quota). Both touch money and data
+2. **Today, also process-only:** stop opening any second copy of the app in the
+   counter's browser (A-20). Then schedule the code fix.
+3. **First PR:** A-02 (references) and A-04 (quota). Both touch money and data
    safety. A-02 is now a small change confined to `refFor()` / `previewRef()`.
-3. **Second PR:** A-06 (`$` helper), then A-07 (single charge formula). These
+4. **Second PR:** A-20 (storage instance identity) - it protects the ledger.
+5. **Third PR:** A-06 (`$` helper), then A-07 (single charge formula). These
    remove whole classes of future bug and make later refactoring safe.
-4. **Third PR:** A-03, A-05, A-08 - correctness and clarity.
-5. **When restyling:** A-15 (inline field styles). Visual change, own PR.
-6. **Backlog:** A-10, only if tablets are actually required.
+6. **Fourth PR:** A-03, A-05, A-08 - correctness and clarity.
+7. **When restyling:** A-15 (inline field styles). Visual change, own PR.
+8. **Backlog:** A-10, only if tablets are actually required.
 
 Run `npm run verify` before and after every one of these.

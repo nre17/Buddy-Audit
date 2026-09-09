@@ -145,6 +145,7 @@ There is no deployment pipeline. A release is a file copied to counter machines.
 | R-05 | Divergent versions across counter machines | Medium. Different staff pricing differently. | Medium | Release checklist §4; version visible in the app footer | Maintainer |
 | R-06 | Tariff change applied incorrectly | High. Systematic mis-billing until noticed. | Low | Class A change control; rate tests in the suite | Owner |
 | R-07 | ERP migration loses history | High | Medium | Export requirements in `07-erp-handover-spec.md`; keep final backups indefinitely | Owner |
+| R-09 | A second copy of the app opened in the counter's browser writes into the live register (audit A-20) | High. Fabricated invoices and a rewritten cash position, silently. | Medium — easy to trigger by accident | Process rule in runbook §4; code fix scheduled as A-20 | Maintainer |
 | R-08 | Branch protection is not enforceable on the current GitHub plan, so a change can reach `main` without review or a passing CI run | Medium. A defect or a policy breach could land unreviewed. | Medium | Convention in §3.2 and `CONTRIBUTING.md`; CI still reports on every push; upgrade the plan to make it a real control | Maintainer |
 
 ---

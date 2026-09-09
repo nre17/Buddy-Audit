@@ -112,8 +112,23 @@ Chrome or Safari on macOS, tested. Use one browser and one profile consistently 
 the counter machine.
 
 - Do not use Private/Incognito. Data is discarded on close.
-- Do not run the app from two different folders. Each path has its own separate data.
 - Advise IT never to run "clear browsing data" on the counter profile.
+
+> **Every local copy of the app shares one set of data.** In Chrome, all files
+> opened from your computer count as the same "site", so the register is tied to
+> the **browser profile**, not to the file's name or folder. Two consequences,
+> and the second one bites:
+>
+> 1. **Good:** replacing the application file during an upgrade does not lose
+>    anything. You may rename it or move it; the data stays put.
+> 2. **Dangerous:** if you open a *second* copy of the app in the same browser -
+>    a downloaded one, an older version, a copy for training - it is reading and
+>    writing the **live counter register**. Clicking *Load Sample Data* or
+>    *Erase All Data* in that second copy changes the real one.
+>
+> **Rule: only ever open the counter's own copy in the counter's browser.** To
+> demonstrate, train, or try a new version, use a different browser (or a
+> different browser profile) so it has its own separate storage. See audit A-20.
 
 ---
 
@@ -157,7 +172,8 @@ invoices keep the name they were raised under.
 
 | Symptom | Cause | Action |
 |---|---|---|
-| Register is empty after an update | File was renamed or moved, so the browser sees a new site | Restore the original filename and path, or restore from backup |
+| Register is empty after an update | Different browser, or a different browser profile, from the one holding the data - not the file's name or location | Open the app in the browser the counter normally uses. If it is genuinely gone, restore from backup |
+| Sample or unfamiliar invoices appear in the register | A second copy of the app was opened in the same browser and seeded with demo data (audit A-20) | Delete the demo rows, re-check Cash on Hand and the opening balance, and restore from backup if the figures do not reconcile |
 | "Could not save" toast | localStorage is full or blocked | Back up immediately, then see audit A-04. Do not keep working |
 | Cash on Hand looks wrong | An invoice or handover was deleted, or the opening balance is unset | Rates & Data → check opening balance; review the register for gaps |
 | An export AWB is not on the lying list | The advice had no departure time | Add it manually on the Lying List tab; capture departure time on the advice next time |

@@ -39,6 +39,9 @@ file is blocked as a cross-origin request and any CDN may be unreachable. So:
 
 - No external CSS, JS, fonts or images.
 - Assets are embedded as `data:` URIs (the logo is a base64 PNG on a single line).
+- Persistence is `localStorage` under the `file://` origin. Chrome treats every
+  local file as that one origin, so the store belongs to the browser profile and
+  not to the file's path - see audit A-20 for the operational consequence.
 - No modules, no bundler, no transpiler. The source is what the browser runs.
 
 **Do not "fix" this by splitting the file.** It is a deliberate trade, and the cost

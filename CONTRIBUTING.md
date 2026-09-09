@@ -170,6 +170,10 @@ Be specific about the file region and the expected verification. Vague prompts o
 ## Releasing to the counter
 
 Merging does not deploy anything. Follow `docs/06-operations-runbook.md` section 3.
-Back up the counter machine first, always, and keep the filename and folder
-identical — `localStorage` is scoped to the file path, and renaming it makes the
-data appear to vanish.
+Back up the counter machine first, always.
+
+The register is tied to the **browser profile**, not to the file's path, so
+replacing the file in place is safe and renaming it loses nothing. The hazard runs
+the other way: every local copy opened in that browser shares the same data, so
+never open a test or demo copy in the counter's browser. Use a separate browser
+profile. See audit A-20.

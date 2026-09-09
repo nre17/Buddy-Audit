@@ -66,6 +66,11 @@ of all eight tabs before and after. Rendering is byte-identical.
 
 ### Known, still open
 
+- **A-20** *new, P1.* Chrome treats every local file as one origin, so every copy
+  of the application opened in the same browser profile shares one data store.
+  Replacing the file during an upgrade is therefore safe, but a second copy
+  opened in the counter's browser writes into the live register. Documentation
+  previously stated the opposite and has been corrected.
 - **A-02** invoice references do not restart daily. Now isolated to `refFor()`
   and `previewRef()`.
 - **A-15** *new.* 22 form controls carry inline styles that override the
