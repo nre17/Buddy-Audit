@@ -132,9 +132,14 @@ Change classes, review requirements, the release and rollback procedure, the ris
 register and the decision log are in
 [`docs/09-governance.md`](docs/09-governance.md).
 
-In short: branch, change one thing, `npm test`, `node tools/pii-scan.js`, open a
-PR. Tariff and business-rule changes need the system owner's approval recorded in
-the PR and must not be mixed with other work.
+In short: branch, change one thing, `npm run verify`, open a PR. Tariff and
+business-rule changes need the system owner's approval recorded in the PR and
+must not be mixed with other work.
+
+Note that branch protection is not available on a private repository on the free
+GitHub plan, so that flow is a convention the team keeps rather than a rule the
+platform enforces. CI still runs on every push and pull request. See
+[`docs/09-governance.md`](docs/09-governance.md) §3.4 and risk R-08.
 
 ---
 

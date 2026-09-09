@@ -86,8 +86,21 @@ anything else.
 
 ### 3.4 Branch protection
 
-`main` should require: a pull request, a passing CI run, and no force-pushes.
-See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for the commands.
+`main` should require a pull request, a passing CI run, and no force-pushes.
+
+**This is currently a convention, not an enforced control.** GitHub does not
+offer branch protection on private repositories on the free plan, so the rule
+cannot be created. CI runs on every push and every pull request and reports
+pass/fail, but nothing prevents a direct push to `main`.
+
+Two ways to close the gap, whichever suits:
+
+- Upgrade the plan (GitHub Team or Pro) and create the rule. See
+  [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
+- Keep it as a discipline: branch for every change, never commit to `main`,
+  and treat a red CI run as blocking even though the platform will not.
+
+Until it is enforced, R-08 in the risk register tracks the exposure.
 
 ---
 
@@ -132,6 +145,7 @@ There is no deployment pipeline. A release is a file copied to counter machines.
 | R-05 | Divergent versions across counter machines | Medium. Different staff pricing differently. | Medium | Release checklist §4; version visible in the app footer | Maintainer |
 | R-06 | Tariff change applied incorrectly | High. Systematic mis-billing until noticed. | Low | Class A change control; rate tests in the suite | Owner |
 | R-07 | ERP migration loses history | High | Medium | Export requirements in `07-erp-handover-spec.md`; keep final backups indefinitely | Owner |
+| R-08 | Branch protection is not enforceable on the current GitHub plan, so a change can reach `main` without review or a passing CI run | Medium. A defect or a policy breach could land unreviewed. | Medium | Convention in §3.2 and `CONTRIBUTING.md`; CI still reports on every push; upgrade the plan to make it a real control | Maintainer |
 
 ---
 
@@ -145,6 +159,11 @@ There is no deployment pipeline. A release is a file copied to counter machines.
 | No external asset references | CI grep | Yes |
 | No live backups committed | CI grep + `.gitignore` | Yes |
 | Documentation current | Review | Yes, by convention |
+
+Note the caveat in §3.4: on the current plan these gates *report* rather than
+*block*, because branch protection is unavailable on a private free-plan
+repository. They are still run on every push and every pull request, and a red
+run should be treated as blocking.
 
 The regression suite is the load-bearing control. This application has no type
 system and no framework; the suite is the only thing that makes a refactor

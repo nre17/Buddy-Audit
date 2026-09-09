@@ -23,6 +23,12 @@ gh repo create solitair-invoicing --private --source=. --remote=origin --push
 #    - Require a pull request before merging
 #    - Require the CI checks to pass ("Regression suite", "Repository guards")
 #    - Do not allow force pushes
+#
+#    NOTE: branch protection on a PRIVATE repository requires a paid GitHub
+#    plan. On the free plan the rule cannot be created, so the pull-request
+#    route in this document is a convention the team keeps rather than a
+#    control the platform enforces. CI still runs on every push and every PR,
+#    and still reports pass/fail - it just cannot block a direct push to main.
 ```
 
 Then verify locally:
