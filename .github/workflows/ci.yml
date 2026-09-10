@@ -50,14 +50,19 @@ jobs:
           fi
           echo "Demo master matches its generator."
 
-      - name: Block counter-machine backups
+      - name: Block counter-machine backups and shipment manifests
         run: |
           if git ls-files | grep -E '\.backup\.json$|^data/'; then
             echo "::error::A localStorage backup appears to be committed."
             echo "These contain customer invoices. See docs/08-data-protection.md."
             exit 1
           fi
-          echo "No backup files committed."
+          if git ls-files | grep -iE '\.(csv|tsv|xlsx|xls)$'; then
+            echo "::error::A spreadsheet or CSV file appears to be committed."
+            echo "Shipment manifests name real customers and shipments. See docs/08-data-protection.md."
+            exit 1
+          fi
+          echo "No backup or manifest files committed."
 
       - name: Check the app is still a single self-contained file
         run: |

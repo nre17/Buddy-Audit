@@ -26,7 +26,7 @@ input,select,textarea{font:inherit;color:var(--txt)}
 #brandText{border-left:1px solid var(--line);padding-left:12px}
 .brand span{font-weight:500;opacity:.55;font-size:10.5px;display:block;letter-spacing:.6px;text-transform:uppercase}
 .tabs{display:flex;gap:4px;margin-left:12px;height:100%}
-.tabs button{background:transparent;border:0;color:var(--mut);padding:0 14px;height:100%;font-size:12.5px;font-weight:600;border-bottom:2px solid transparent}
+.tabs button{background:transparent;border:0;color:var(--mut);padding:0 clamp(6px,calc(2vw - 19px),14px);height:100%;font-size:12.5px;font-weight:600;border-bottom:2px solid transparent} /* 14px from ~1650px wide; tightens below so nine tabs fit at 1280px */
 .tabs button:hover{color:var(--txt)}
 .tabs button.on{color:var(--txt);border-bottom-color:var(--brand)}
 .hdr-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--mut)}
@@ -52,6 +52,14 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .f input:hover,.f select:hover,.f textarea:hover{border-color:#d1d5db}
 .f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(26,86,219,.08)}
 .f input[readonly]{background:var(--bg);color:var(--mut)}
+.awbstatus{font-size:11px;line-height:1.5;color:var(--mut);margin:-4px 0 12px;min-height:16px}
+.awbstatus.ok{color:var(--ok)}.awbstatus.warn{color:var(--warn)}
+.awbstatus .btn{margin-left:6px;vertical-align:middle}
+.billband{margin-top:4px;padding:10px 12px 0;border:1px solid var(--line);border-radius:6px;background:#f8fafc}
+.billband .bandtitle{font-size:11px;font-weight:700;color:var(--txt);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.billgrid{display:grid;grid-template-columns:1.35fr .75fr 1.5fr;gap:0 12px}
+.manifest-preview{max-height:42vh;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.manifest-preview th{position:sticky;top:0;background:#fff}
 .f.req input,.f.req select{border-left:2px solid var(--brand);border-radius:6px}
 .f.bad input,.f.bad select{border-color:var(--err);background:#fef2f2}
 .span2{grid-column:span 2}
@@ -194,6 +202,7 @@ table.reg tbody tr:hover td:last-child{background:#f8fafc}
     <div id="brandText">SOLITAIR CARGO<span>Imports/Exports</span></div>
   </div>
   <div class="tabs">
+    <button data-p="shipments">Shipment Database</button>
     <button data-p="export" class="on">Export Advice</button>
     <button data-p="import">Import Advice</button>
     <button data-p="lying">Lying List</button>
@@ -211,6 +220,7 @@ table.reg tbody tr:hover td:last-child{background:#f8fafc}
 </div>
 
 <div class="wrap">
+  <div id="p-shipments" class="page"></div>
   <div id="p-export" class="page on"></div>
   <div id="p-import" class="page"></div>
   <div id="p-lying" class="page"></div>
@@ -237,7 +247,7 @@ table.reg tbody tr:hover td:last-child{background:#f8fafc}
 
 /* Bump on every release. Shown under Rates & Data so a counter machine can be
    checked against the released version without opening the file. */
-var APP_VERSION = "1.1.0";
+var APP_VERSION = "1.2.0";
 
 /* SITE DETAILS - PLACEHOLDERS.
    The tax registration number and bank account details are site configuration,
@@ -2213,24 +2223,42 @@ function resolveCustomer(name){
   }
   return hit;
 }
-function onCustInput(mode, inp){
-  var prefix = mode==="export"?"a":"i";
-  inp.addEventListener("input", function(){
-    var nm = inp.value.trim();
-    var c = resolveCustomer(nm);
-    if(c){
-      var trn = $("#"+prefix+"_cust_trn");
-      var ctry = $("#"+prefix+"_cust_country");
-      var pay = $("#"+prefix+"_cust_paymode");
-      var addr = $("#"+prefix+"_addr");
-      var acct = $("#"+prefix+"_acct");
-      if(trn) trn.value = c.trn || "";
-      if(ctry) ctry.value = c.country || "";
-      if(pay) pay.value = c.pay || "";
-      if(addr) addr.value = [c.addr, c.city, c.state].filter(Boolean).join(", ") || "";
-      if(acct) acct.value = c.trn || "";
+/* The billing party is chosen from the same customer master as the AWB owner.
+   Its TRN and address are the ones that print, because the billing party is who
+   the charges are invoiced to - not always the company the AWB was booked
+   under. Picking a name fills both fields; they stay editable for a party that
+   is not in the master. If the name is then changed to one that is not in the
+   master, the TRN and address filled in for the previous name are cleared, so a
+   party can never print under another party's TRN. */
+function fillBilling(p, name){
+  var c = resolveCustomer(name), bill = $(p+"_bill");
+  if(c){
+    $(p+"_bill_trn").value = c.trn || "";
+    $(p+"_bill_addr").value = [c.addr, c.city, c.state].filter(Boolean).join(", ");
+    bill.dataset.filledFor = c.name;
+    return true;
+  }
+  if(bill.dataset.filledFor && bill.dataset.filledFor !== name){
+    $(p+"_bill_trn").value = "";
+    $(p+"_bill_addr").value = "";
+    delete bill.dataset.filledFor;
+  }
+  return false;
+}
+function wireBillingParty(mode){
+  var p = mode==="export" ? "a" : "i", bill = $(p+"_bill");
+  if(!bill) return;
+  bill.addEventListener("input", function(){ fillBilling(p, bill.value.trim()); });
+  $(p+"_bill_same").onclick = function(){
+    var owner = $(p+"_cust").value.trim();
+    if(!owner){ toast("Enter the AWB, or the AWB owner, first","warn"); return; }
+    bill.value = owner;
+    if(!fillBilling(p, owner)){
+      $(p+"_bill_trn").value = "";
+      $(p+"_bill_addr").value = "";
+      toast("The AWB owner is not in the customer master. Enter the billing TRN and address.","warn");
     }
-  });
+  };
 }
 
 
@@ -2298,6 +2326,14 @@ function load(){
         DB.entries.forEach(function(e){
           if(!e.type){ e.type = (e.amount!==undefined && e.mawb===undefined) ? "handover" : "invoice"; fixed = true; }
         });
+        /* backfill: invoices saved before the billing party existed were billed
+           to the customer on the advice, whose TRN and address were held in
+           acct / addr */
+        DB.entries.forEach(function(e){
+          if(e.type === "invoice" && e.billTo === undefined){
+            e.billTo = e.cust || ""; e.billTrn = e.acct || ""; e.billAddr = e.addr || ""; fixed = true;
+          }
+        });
         if(DB.sec && DB.sec.length){
           DB.sec.forEach(function(x){
             if(!x.id){ x.id = "SEC"+Date.now()+"_"+Math.floor(Math.random()*100000); fixed = true; }
@@ -2339,7 +2375,568 @@ function cashOnHand(){
 }
 
 /* ============================================================
-   7c. ADVICE FORMS  (Export / Import charge advice)
+   7c. SHIPMENT MANIFEST  (AWB-first entry on the advice forms)
+   ============================================================ */
+
+/* The day's manifest is pasted into the Shipment Database tab from Excel, or
+   loaded from a CSV, and kept as a lookup table: typing an AWB on an advice
+   fills in that shipment's details.
+
+   Shipments live under their own storage key, not inside DB. They are a copy
+   of a document that exists elsewhere, so they are not rewritten on every
+   invoice save and are not part of the JSON backup - after a restore, paste
+   the manifest again. Anything imported more than SH_KEEP_DAYS ago is dropped
+   at the next import, so the lookup table cannot grow into the storage the
+   invoice register needs. */
+var SH_KEY = "solitair_shipments_v1";
+var SH_KEEP_DAYS = 30;
+var SH = { items: [] };
+var AWB_LOOKUP = {};   /* per advice form: re-runs its AWB lookup after an import */
+
+function shLoad(){
+  SH = { items: [] };
+  try{ var r = localStorage.getItem(SH_KEY); if(r){ var o = JSON.parse(r); if(o && o.items) SH = o; } }catch(e){}
+}
+function shSave(){
+  try{ localStorage.setItem(SH_KEY, JSON.stringify(SH)); return true; }
+  catch(e){ toast("Could not save shipments: browser storage is full","err"); return false; }
+}
+
+/** An AWB reduced to its digits, so "780-30901001", "780 30901001" and
+    "78030901001" are the same shipment. */
+function awbKey(v){ return String(v==null ? "" : v).replace(/\D/g, ""); }
+
+/** The loaded shipment for an AWB, or null. With `unique`, also null while any
+    other loaded AWB still starts with the same digits, so a lookup made while
+    the AWB is being typed never fills in on a prefix of a longer AWB. */
+function shFind(awb, unique){
+  var k = awbKey(awb), hit = null;
+  if(k.length < 8) return null;
+  for(var i=0; i<SH.items.length; i++){
+    var sk = SH.items[i].key;
+    if(sk === k) hit = SH.items[i];
+    else if(unique && sk.indexOf(k) === 0) return null;
+  }
+  return hit;
+}
+
+/** "Export", "Import", or "" when the manifest row does not say. */
+function shDirection(x){
+  if(x.dep && !x.rcf) return "Export";
+  if(x.rcf && !x.dep) return "Import";
+  if(x.org === "DWC" && x.dst && x.dst !== "DWC") return "Export";
+  if(x.dst === "DWC" && x.org && x.org !== "DWC") return "Import";
+  return "";
+}
+
+/** A manifest customer name as the customer master spells it, when the two
+    match ignoring case and spacing; otherwise the name as given. */
+function shMasterName(name){
+  var norm = function(v){ return String(v || "").toLowerCase().replace(/\s+/g, " ").trim(); };
+  var k = norm(name);
+  if(!k) return "";
+  for(var i=0; i<CUSTOMERS.length; i++){ if(norm(CUSTOMERS[i].name) === k) return CUSTOMERS[i].name; }
+  return String(name).trim();
+}
+function shInMaster(name){ return !!resolveCustomer(shMasterName(name)); }
+function shcKnown(code){ return CFG.shcCodes.some(function(x){ return x.c === code; }); }
+
+/** "2026-09-10T02:15" as "10 Sep 2026, 02:15" - written out, so a day/month
+    mix-up is visible at a glance. */
+function shWhen(v){
+  var m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if(!m) return "";
+  var mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(m[2],10)-1];
+  return parseInt(m[3],10) + " " + mon + " " + m[1] + ", " + m[4] + ":" + m[5];
+}
+
+/* ---------- reading a manifest ---------- */
+
+/** Split delimited text into rows of cells, honouring quoted cells, doubled
+    quotes and line breaks inside quotes - what Excel produces both for a
+    clipboard copy (tab-delimited) and for a CSV export. Blank rows are dropped. */
+function parseDelimited(text, delim){
+  var rows = [], row = [], cell = "", quoted = false, ch;
+  text = String(text || "").replace(/\r\n?/g, "\n");
+  for(var i=0; i<text.length; i++){
+    ch = text.charAt(i);
+    if(quoted){
+      if(ch === '"'){ if(text.charAt(i+1) === '"'){ cell += '"'; i++; } else quoted = false; }
+      else cell += ch;
+    }
+    else if(ch === '"' && cell === "") quoted = true;
+    else if(ch === delim){ row.push(cell); cell = ""; }
+    else if(ch === "\n"){ row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if(cell !== "" || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(c){ return String(c).trim() !== ""; }); });
+}
+
+/* manifest heading -> shipment field. Headings are compared with case, spaces
+   and punctuation removed, so column order and small wording differences do
+   not matter. An alias ending in * matches any heading that starts with it. */
+var SH_COLUMNS = {
+  awb:   ["awb", "awbno", "awbnumber", "mawb", "mawbno", "mawbnumber"],
+  org:   ["origin", "org", "from"],
+  dst:   ["destination", "dest", "dst", "to"],
+  fltno: ["flightnumber", "flightno", "flight", "fltno"],
+  dep:   ["departure*", "std", "etd"],
+  rcf:   ["rcf*"],
+  shc:   ["shccode", "shc"],
+  nog:   ["natureofgoods", "nog", "commodity"],
+  pcs:   ["ofpieces", "pieces", "pcs", "noofpieces", "numberofpieces"],
+  wt:    ["grossweight", "grossweightkg", "weight", "weightkg", "wt", "gw"],
+  cust:  ["customer", "customername", "awbowner", "agent", "shipper"]
+};
+
+function shMapHeader(cells){
+  var map = {};
+  cells.forEach(function(c, idx){
+    var h = String(c).toLowerCase().replace(/[^a-z0-9]/g, "");
+    if(!h) return;
+    Object.keys(SH_COLUMNS).some(function(f){
+      if(map[f] !== undefined) return false;
+      var hit = SH_COLUMNS[f].some(function(a){
+        return a.charAt(a.length-1) === "*" ? h.indexOf(a.slice(0, -1)) === 0 : h === a;
+      });
+      if(hit) map[f] = idx;
+      return hit;
+    });
+  });
+  return map;
+}
+
+/** A manifest date cell broken into parts, or null when unreadable. Year-first
+    dates are unambiguous; for 09/10/2026 the day/month order is decided per
+    import by shDateOrder(). Excel serial numbers (a date cell formatted as
+    General) are accepted too. For a year-last date, `a` and `b` are the first
+    and second numbers as written. */
+function shDateParts(v){
+  v = String(v == null ? "" : v).trim();
+  if(!v) return null;
+  var m, hh = 0, mi = 0;
+  if(/^\d{5}(\.\d+)?$/.test(v)){
+    var d = new Date(Math.round((parseFloat(v) - 25569) * 864e5));   /* 25569 = 1 Jan 1970 */
+    return { y:d.getUTCFullYear(), a:d.getUTCMonth()+1, b:d.getUTCDate(), iso:true, h:d.getUTCHours(), mi:d.getUTCMinutes() };
+  }
+  var t = v.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/);
+  if(t){
+    hh = parseInt(t[1], 10); mi = parseInt(t[2], 10);
+    var ap = t[3] ? t[3].toUpperCase() : "";
+    if(ap === "PM" && hh < 12) hh += 12;
+    if(ap === "AM" && hh === 12) hh = 0;
+  }
+  if((m = v.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/)))
+    return { y:parseInt(m[1],10), a:parseInt(m[2],10), b:parseInt(m[3],10), iso:true, h:hh, mi:mi };
+  if((m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/)))
+    return { y:(m[3].length === 2 ? 2000 : 0) + parseInt(m[3],10), a:parseInt(m[1],10), b:parseInt(m[2],10), iso:false, h:hh, mi:mi };
+  return null;
+}
+
+/** Date parts as a datetime-local value, reading a year-last date in `order`
+    ("DMY" or "MDY"). "" when that reading is not a real date and time. */
+function shDateValue(x, order){
+  if(!x) return "";
+  var mo = x.iso ? x.a : (order === "DMY" ? x.b : x.a);
+  var da = x.iso ? x.b : (order === "DMY" ? x.a : x.b);
+  if(x.h > 23 || x.mi > 59) return "";
+  var d = new Date(x.y, mo-1, da);
+  if(isNaN(d.getTime()) || d.getMonth() !== mo-1 || d.getDate() !== da) return "";
+  return x.y + "-" + pad(mo) + "-" + pad(da) + "T" + pad(x.h) + ":" + pad(x.mi);
+}
+
+/** Whether this browser writes dates day-first. */
+function shLocaleDayFirst(){
+  try{ return /^\D*31/.test(new Date(2026, 0, 31).toLocaleDateString()); }catch(e){ return true; }
+}
+
+/* Decide whether the year-last dates in one import are day-first or
+   month-first. Storage charges are computed from these times, so this matters.
+   Any first number above 12 settles it as day-first, any second number above
+   12 as month-first. When every date is ambiguous - as in the first twelve
+   days of any month - take the reading under which the manifest covers the
+   shorter period, since one manifest spans a day or two, not months; a
+   genuine tie falls back to this browser's own date format. The preview shows
+   every date written out and lets staff flip the order before importing. */
+function shDateOrder(parts){
+  var dayFirst = false, monthFirst = false, ambiguous = false;
+  parts.forEach(function(x){
+    if(!x || x.iso) return;
+    ambiguous = true;
+    if(x.a > 12) dayFirst = true;
+    if(x.b > 12) monthFirst = true;
+  });
+  if(!ambiguous) return { order: shLocaleDayFirst() ? "DMY" : "MDY", sure: true };
+  if(dayFirst && !monthFirst) return { order: "DMY", sure: true };
+  if(monthFirst && !dayFirst) return { order: "MDY", sure: true };
+  if(dayFirst && monthFirst) return { order: "DMY", sure: false, conflict: true };
+  var span = function(order){
+    var ts = parts.map(function(x){ var v = shDateValue(x, order); return v ? new Date(v).getTime() : NaN; })
+                  .filter(function(n){ return !isNaN(n); });
+    return ts.length ? Math.max.apply(null, ts) - Math.min.apply(null, ts) : 0;
+  };
+  var dmy = span("DMY"), mdy = span("MDY");
+  if(dmy === mdy) return { order: shLocaleDayFirst() ? "DMY" : "MDY", sure: false };
+  return { order: dmy < mdy ? "DMY" : "MDY", sure: false };
+}
+
+/** Parse pasted or uploaded manifest text into shipments, with a report.
+    `orderOverride` ("DMY"/"MDY") replaces the detected date order. */
+function shParseManifest(text, orderOverride){
+  text = String(text || "").replace(/\r\n?/g, "\n");
+  var header = text.split("\n").filter(function(l){ return l.trim(); })[0] || "";
+  var count = function(d){ return header.split(d).length - 1; };
+  var delim = "\t";
+  [",", ";"].forEach(function(d){ if(count(d) > count(delim)) delim = d; });
+
+  var rows = parseDelimited(text, delim), hi = -1, map = null;
+  for(var i=0; i<Math.min(rows.length, 5); i++){
+    var mp = shMapHeader(rows[i]);
+    if(mp.awb !== undefined){ hi = i; map = mp; break; }
+  }
+  if(hi < 0) return { error: "No AWB column was found. Include the heading row when copying, with one column headed AWB." };
+
+  var cell = function(r, f){ return map[f] === undefined ? "" : String(r[map[f]] == null ? "" : r[map[f]]).trim(); };
+  var parts = [];
+  var body = rows.slice(hi+1).map(function(r){
+    var dp = shDateParts(cell(r, "dep")), rp = shDateParts(cell(r, "rcf"));
+    if(dp) parts.push(dp);
+    if(rp) parts.push(rp);
+    return { r:r, dp:dp, rp:rp };
+  });
+  var detected = shDateOrder(parts), order = orderOverride || detected.order;
+
+  var items = [], seen = {}, skipped = 0, dupes = 0;
+  body.forEach(function(x){
+    var r = x.r, awb = cell(r, "awb").toUpperCase(), key = awbKey(awb), warn = [];
+    if(key.length < 8){ skipped++; return; }
+    var shc = cell(r, "shc").toUpperCase();
+    if(shc && !shcKnown(shc)) warn.push("SHC " + shc + " is not a known code");
+    var dep = shDateValue(x.dp, order), rcf = shDateValue(x.rp, order);
+    if(cell(r, "dep") && !dep) warn.push("departure time not readable");
+    if(cell(r, "rcf") && !rcf) warn.push("RCF time not readable");
+    var wt = cell(r, "wt"), pcs = cell(r, "pcs");
+    var item = {
+      awb: awb, key: key,
+      org: cell(r, "org").toUpperCase(), dst: cell(r, "dst").toUpperCase(),
+      fltno: cell(r, "fltno").toUpperCase(),
+      dep: dep, rcf: rcf, shc: shc, nog: cell(r, "nog"),
+      pcs: pcs === "" ? null : num(pcs),
+      wt: wt === "" ? null : num(wt),
+      cust: cell(r, "cust"),
+      warn: warn
+    };
+    if(seen[key] !== undefined){ items[seen[key]] = item; dupes++; }
+    else { seen[key] = items.length; items.push(item); }
+  });
+  return { items:items, skipped:skipped, dupes:dupes, order:order, detected:detected,
+           dated: parts.some(function(x){ return !x.iso; }) };
+}
+
+/** Merge parsed shipments into the loaded set, newest row winning per AWB.
+    Returns counts, or null when the browser could not store them. */
+function shImport(items){
+  var now = Date.now(), cutoff = now - SH_KEEP_DAYS*864e5, byKey = {}, order = [];
+  var added = 0, updated = 0, dropped = 0;
+  SH.items.forEach(function(x){
+    if((x.importedAt || 0) < cutoff){ dropped++; return; }
+    byKey[x.key] = x; order.push(x.key);
+  });
+  items.forEach(function(x){
+    if(byKey[x.key]) updated++; else { added++; order.push(x.key); }
+    byKey[x.key] = { awb:x.awb, key:x.key, org:x.org, dst:x.dst, fltno:x.fltno, dep:x.dep, rcf:x.rcf,
+                     shc:x.shc, nog:x.nog, pcs:x.pcs, wt:x.wt, cust:x.cust, importedAt:now };
+  });
+  var previous = SH;
+  SH = { items: order.map(function(k){ return byKey[k]; }) };
+  if(!shSave()){ SH = previous; return null; }
+  return { added:added, updated:updated, dropped:dropped };
+}
+
+/* Ten demo shipments for training and demonstration: seven exports and three
+   imports. Owners come from the demo customer master, air waybills from the
+   reserved 780-3090xxxx demo band, and times are relative to now. One has no
+   gross weight, as manifests often do, so the manual step can be seen. */
+function shDemoItems(){
+  var now = Date.now();
+  var at = function(hours){ var d = new Date(now + hours*36e5); return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+  var owner = function(i){ return CUSTOMERS.length ? CUSTOMERS[(i*181 + 7) % CUSTOMERS.length].name : ""; };
+  /* awb, origin, destination, flight, departs in (h), RCF (h ago), SHC, nature of goods, pieces, weight */
+  return [
+    ["780-30901001", "DWC", "ISU", "ZZ 901",  3, null, "GEN", "Auto Spare Parts",              24,  312.5],
+    ["780-30901002", "DWC", "EVN", "ZZ 902",  6, null, "DGR", "Lithium Ion Batteries UN3480", 140, 1480],
+    ["780-30901003", "KWI", "DWC", "ZZ 903", null, 2,  "PER", "Fresh Fruits and Vegetables",  210, 2640],
+    ["780-30901004", "DWC", "BAH", "ZZ 904", 10, null, "PEM", "Frozen Meat",                  230, 3120],
+    ["780-30901005", "DWC", "BEY", "ZZ 905", 14, null, "AVI", "Live Sheep",                   760, 5890],
+    ["780-30901006", "BEY", "DWC", "ZZ 906", null, 60, "GEN", "Garments and Textiles",        450, 1995],
+    ["780-30901007", "DWC", "NBO", "ZZ 907", 21, null, "VAL", "Gold Bars",                    220, 88.4],
+    ["780-30901008", "NBO", "DWC", "ZZ 908", null, 9,  "VUN", "Mobile Phones",                610, 1210],
+    ["780-30901009", "DWC", "DAM", "ZZ 909", 26, null, "GEN", "Household Goods",               80, null],
+    ["780-30901010", "DWC", "MCT", "ZZ 910", 31, null, "GEN", "Machinery Parts",               45, 940]
+  ].map(function(r, i){
+    return { awb:r[0], key:awbKey(r[0]), org:r[1], dst:r[2], fltno:r[3],
+             dep: r[4] == null ? "" : at(r[4]), rcf: r[5] == null ? "" : at(-r[5]),
+             shc:r[6], nog:r[7], pcs:r[8], wt:r[9], cust:owner(i), warn:[] };
+  });
+}
+
+/* ---------- the AWB field on the advice forms ---------- */
+
+function shCountText(){
+  var n = SH.items.length;
+  return n ? n + " shipment" + (n === 1 ? "" : "s") + " in the Shipment Database. Type an AWB to fill in its details."
+           : "The Shipment Database is empty. Paste today's manifest there, or enter the details by hand.";
+}
+function shStatus(p, cls, html){
+  var el = $(p+"_awbstatus");
+  if(!el) return;
+  el.className = "awbstatus" + (cls ? " " + cls : "");
+  el.innerHTML = html;
+}
+function shRefreshForms(){
+  ["export", "import"].forEach(function(m){ if(AWB_LOOKUP[m]) AWB_LOOKUP[m](true); });
+}
+
+/* The AWB is typed first. When it matches a loaded shipment, that shipment's
+   details are filled in and every field stays editable. While the AWB is being
+   typed, a fill happens only on an exact, unambiguous match. When the AWB is
+   committed (Enter, or leaving the field) and no longer matches the shipment
+   that was filled in, those details are cleared: one shipment's data must never
+   sit under another shipment's AWB. A shipment of the other direction is not
+   filled in at all, because export and import advices use different tariffs. */
+function wireAwbLookup(mode, recalc){
+  var isExp = mode === "export", p = isExp ? "a" : "i", here = isExp ? "Export" : "Import";
+  var TIME = isExp ? "t2" : "t1";   /* departure on an export, RCF on an import */
+  var awbEl = $(p+"_mawb"), filled = null, wrongKey = null;
+  if(!awbEl) return;
+
+  function set(id, v){ var el = $(p+"_"+id); if(el) el.value = (v == null ? "" : v); }
+  function clearFilled(){
+    set("cust", ""); set("org", isExp ? "DWC" : ""); set("dst", isExp ? "" : "DWC");
+    set("fltno", ""); set(TIME, nowLocalDT()); set("shc", "GEN"); set("nog", "");
+    set("pcs", ""); set("wt", "");
+    filled = null;
+  }
+  function fill(x){
+    if(filled) clearFilled();
+    var when = isExp ? x.dep : x.rcf;
+    set("cust", shMasterName(x.cust));
+    if(x.org) set("org", x.org);
+    if(x.dst) set("dst", x.dst);
+    set("fltno", x.fltno);
+    if(when) set(TIME, when);
+    if(x.shc && shcKnown(x.shc)) set("shc", x.shc);
+    set("nog", x.nog); set("pcs", x.pcs); set("wt", x.wt);
+    filled = x.key;
+    recalc();
+
+    var notes = [];
+    if(x.cust && !shInMaster(x.cust)) notes.push("the AWB owner is not in the customer master");
+    if(x.wt == null) notes.push("gross weight is not on the manifest, enter it below");
+    if(x.shc && !shcKnown(x.shc)) notes.push("SHC " + esc(x.shc) + " is not a known code, choose one below");
+    if(!when) notes.push((isExp ? "departure" : "RCF") + " time is not on the manifest");
+    shStatus(p, notes.length ? "warn" : "ok",
+      "Shipment found" + (x.fltno ? " &middot; " + esc(x.fltno) : "")
+      + (when ? " &middot; " + (isExp ? "departs " : "RCF ") + esc(shWhen(when)) : "")
+      + (notes.length ? ". Note: " + notes.join("; ") + "." : "."));
+  }
+  function wrongWay(x, dir){
+    wrongKey = x.key;
+    shStatus(p, "warn", "AWB " + esc(x.awb) + " is an " + dir.toLowerCase() + " shipment on the manifest, so it has not been filled in here."
+      + '<button class="btn sm" type="button" id="' + p + '_awbswitch">Open in ' + dir + ' Advice</button>');
+    $(p+"_awbswitch").onclick = function(){
+      var other = dir === "Export" ? "export" : "import", op = other === "export" ? "a" : "i";
+      var tabBtn = document.querySelector('.tabs button[data-p="' + other + '"]');
+      if(tabBtn) tabBtn.click();
+      awbEl.value = "";
+      lookup(true);
+      $(op+"_mawb").value = x.awb;
+      if(AWB_LOOKUP[other]) AWB_LOOKUP[other](true);
+      $(op+"_mawb").focus();
+    };
+  }
+  function lookup(committing){
+    var key = awbKey(awbEl.value);
+    if(filled && key === filled) return;
+    var x = shFind(awbEl.value, !committing);
+    if(x){
+      var dir = shDirection(x);
+      if(dir && dir !== here){
+        /* a different shipment matched, so this form's shipment details go. The
+           notice is not redrawn when the AWB field then loses focus: redrawing it
+           at that moment would swallow a click on its own button. */
+        if(filled){ clearFilled(); recalc(); }
+        if(wrongKey !== x.key) wrongWay(x, dir);
+        return;
+      }
+      wrongKey = null;
+      fill(x);
+      return;
+    }
+    if(!committing) return;
+    wrongKey = null;
+    if(filled){
+      clearFilled(); recalc();
+      shStatus(p, "warn", "The AWB changed, so the details filled in for the previous shipment were cleared.");
+      return;
+    }
+    shStatus(p, "", !key ? shCountText()
+      : SH.items.length ? "This AWB is not in the Shipment Database. Enter the details below."
+      : "The Shipment Database is empty. Enter the details below, or paste today's manifest there.");
+  }
+
+  awbEl.addEventListener("input", function(){ lookup(false); });
+  awbEl.addEventListener("change", function(){ lookup(true); });
+  awbEl.addEventListener("keydown", function(ev){ if(ev.key === "Enter"){ ev.preventDefault(); lookup(true); } });
+  AWB_LOOKUP[mode] = lookup;
+  shStatus(p, "", shCountText());
+}
+
+/* ---------- the Shipment Database tab ---------- */
+
+/* Paste the manifest, check the preview, import, and see what is loaded. Both
+   advice forms look their AWBs up in what is loaded here. */
+function buildShipments(){
+  var pg = $("p-shipments");
+  if(!pg) return;
+  pg.innerHTML =
+      '<div class="panel"><h3>Shipment Database</h3><div class="body">'
+    + '<p class="hint" style="margin:0 0 8px">In Excel, select the manifest <b>including its heading row</b>, copy, and paste it below, or choose a CSV file. '
+    + 'Columns are matched by their headings, in any order. The Export and Import Advice tabs look each AWB up here. '
+    + 'Shipments are kept in this browser only, and anything imported more than ' + SH_KEEP_DAYS + ' days ago is dropped at the next import.</p>'
+    + '<div class="f"><textarea id="sh_paste" rows="6" placeholder="Paste from Excel here"></textarea></div>'
+    + '<div class="btnbar" style="margin-top:8px;align-items:center">'
+    +   '<button class="btn pri" id="sh_preview" type="button">Preview</button>'
+    +   '<button class="btn" id="sh_filebtn" type="button">Choose CSV File</button>'
+    +   '<input type="file" id="sh_file" accept=".csv,.tsv,.txt" style="display:none">'
+    +   '<button class="btn" id="sh_demo" type="button">Load Sample Shipments</button>'
+    +   '<button class="btn dgr" id="sh_clear" type="button" style="margin-left:auto">Clear Loaded Shipments</button>'
+    + '</div>'
+    + '<div id="sh_result" style="margin-top:10px"></div>'
+    + '</div></div>'
+    + '<div class="panel" style="margin-top:12px"><h3 id="sh_loadedtitle">Loaded Shipments</h3><div class="body">'
+    + '<div class="f" style="max-width:380px;margin-bottom:9px"><input id="sh_filter" placeholder="Search AWB, owner, flight, route or goods"></div>'
+    + '<div id="sh_loaded"></div>'
+    + '</div></div>';
+
+  var HEAD = '<th>AWB</th><th>Dir.</th><th style="text-align:left">AWB Owner</th><th>Route</th><th>Flight</th>'
+           + '<th>Departure / RCF</th><th>SHC</th><th style="text-align:left">Nature of Goods</th><th>Pcs</th><th>Weight</th>';
+  var plural = function(n, word){ return n + " " + word + (n === 1 ? "" : "s"); };
+
+  function cells(x){
+    var dir = shDirection(x);
+    return '<td>' + esc(x.awb) + '</td><td>' + esc(dir || "?") + '</td><td style="text-align:left">' + esc(shMasterName(x.cust)) + '</td>'
+      + '<td>' + esc([x.org, x.dst].filter(Boolean).join(" / ")) + '</td><td>' + esc(x.fltno) + '</td>'
+      + '<td>' + esc(shWhen(dir === "Import" ? x.rcf : (x.dep || x.rcf))) + '</td><td>' + esc(x.shc) + '</td>'
+      + '<td style="text-align:left">' + esc(x.nog) + '</td>'
+      + '<td class="n">' + (x.pcs == null ? "" : esc(x.pcs)) + '</td><td class="n">' + (x.wt == null ? "" : esc(money(x.wt))) + '</td>';
+  }
+
+  function renderLoaded(){
+    var q = $("sh_filter").value.toLowerCase().trim(), out = $("sh_loaded");
+    $("sh_loadedtitle").textContent = "Loaded Shipments (" + SH.items.length + ")";
+    if(!SH.items.length){ out.innerHTML = '<p class="hint" style="margin:0">Nothing is loaded yet. Paste the manifest above.</p>'; return; }
+    var shown = SH.items.filter(function(x){
+      return !q || [x.awb, shMasterName(x.cust), x.fltno, x.org, x.dst, x.nog, x.shc].join(" ").toLowerCase().indexOf(q) >= 0;
+    });
+    if(!shown.length){ out.innerHTML = '<p class="hint" style="margin:0">No loaded shipment matches that search.</p>'; return; }
+    out.innerHTML = '<div class="manifest-preview" style="max-height:60vh"><table class="chg" style="width:100%"><thead><tr>' + HEAD
+      + '<th>Loaded</th></tr></thead><tbody>'
+      + shown.map(function(x){
+          return '<tr>' + cells(x) + '<td>' + (x.importedAt ? esc(fmtDT(new Date(x.importedAt).toISOString())) : "") + '</td></tr>';
+        }).join("")
+      + '</tbody></table></div>';
+  }
+
+  function afterChange(message){
+    renderLoaded();
+    shRefreshForms();
+    toast(message, "ok");
+  }
+
+  function render(orderOverride){
+    var out = $("sh_result"), text = $("sh_paste").value;
+    if(!text.trim()){ out.innerHTML = '<p class="hint">Paste the manifest first.</p>'; return; }
+    var r = shParseManifest(text, orderOverride);
+    if(r.error){ out.innerHTML = '<div class="awbstatus warn">' + esc(r.error) + '</div>'; return; }
+    if(!r.items.length){ out.innerHTML = '<div class="awbstatus warn">No rows with an AWB were found under the headings.</div>'; return; }
+
+    var exp = 0, imp = 0, noted = 0;
+    var rows = r.items.map(function(x){
+      var dir = shDirection(x), notes = x.warn.slice();
+      if(dir === "Export") exp++; else if(dir === "Import") imp++;
+      if(x.cust && !shInMaster(x.cust)) notes.push("owner not in customer master");
+      if(x.wt == null) notes.push("no gross weight");
+      if(!dir) notes.push("direction unclear");
+      if(notes.length) noted++;
+      return '<tr>' + cells(x) + '<td style="text-align:left;color:var(--warn)">' + esc(notes.join("; ")) + '</td></tr>';
+    }).join("");
+
+    var h = '<div class="awbstatus ' + (noted || r.detected.conflict ? "warn" : "ok") + '" style="margin:0 0 6px">'
+      + plural(r.items.length, "shipment") + " ready to import: " + exp + " export, " + imp + " import"
+      + (r.skipped ? ". " + plural(r.skipped, "row") + " without an AWB skipped" : "")
+      + (r.dupes ? ". " + plural(r.dupes, "repeated AWB") + ", the last row kept" : "")
+      + (noted ? ". " + noted + " with notes in the last column" : "") + ".</div>";
+    if(r.dated){
+      h += '<div class="btnbar" style="align-items:center;margin-bottom:6px">'
+        + '<label class="hint" for="sh_order">Dates in this sheet are written</label>'
+        + '<select id="sh_order" style="border:1px solid var(--line);border-radius:5px;padding:4px 8px;font-size:12px;background:#fff">'
+        + '<option value="DMY"' + (r.order === "DMY" ? " selected" : "") + '>day / month / year</option>'
+        + '<option value="MDY"' + (r.order === "MDY" ? " selected" : "") + '>month / day / year</option></select>'
+        + '<span class="hint">' + (orderOverride ? "Set by you."
+            : r.detected.conflict ? '<b style="color:var(--warn)">The sheet writes dates both ways. Check every time below.</b>'
+            : r.detected.sure ? "Read from the sheet."
+            : '<b style="color:var(--warn)">The sheet does not make this certain. Check the times below before importing.</b>') + '</span></div>';
+    }
+    h += '<div class="manifest-preview"><table class="chg" style="width:100%"><thead><tr>' + HEAD
+      + '<th style="text-align:left">Notes</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '<div class="btnbar" style="margin-top:8px;justify-content:flex-end">'
+      + '<button class="btn pri" id="sh_import" type="button">Import ' + plural(r.items.length, "Shipment") + '</button></div>';
+    out.innerHTML = h;
+
+    var orderSel = $("sh_order");
+    if(orderSel) orderSel.onchange = function(){ render(orderSel.value); };
+    $("sh_import").onclick = function(){
+      var res = shImport(r.items);
+      if(!res) return;
+      $("sh_paste").value = "";
+      out.innerHTML = "";
+      afterChange("Imported " + plural(r.items.length, "shipment") + " (" + res.added + " new, " + res.updated + " updated)"
+        + (res.dropped ? "; " + res.dropped + " older than " + SH_KEEP_DAYS + " days dropped" : ""));
+    };
+  }
+
+  $("sh_preview").onclick = function(){ render(); };
+  $("sh_paste").addEventListener("paste", function(){ setTimeout(function(){ render(); }, 0); });
+  $("sh_filebtn").onclick = function(){ $("sh_file").click(); };
+  $("sh_file").onchange = function(){
+    var f = this.files[0];
+    if(!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){ $("sh_paste").value = String(rd.result || ""); render(); };
+    rd.readAsText(f);
+    this.value = "";
+  };
+  $("sh_demo").onclick = function(){
+    var items = shDemoItems(), res = shImport(items);
+    if(!res) return;
+    afterChange("Loaded " + items.length + " sample shipments. Try AWB " + items[0].awb + " on the Export Advice.");
+  };
+  $("sh_clear").onclick = function(){
+    if(!SH.items.length){ toast("No shipments are loaded"); return; }
+    if(!confirm("Remove all " + SH.items.length + " loaded shipments from this browser? Saved advices are not affected.")) return;
+    SH = { items: [] };
+    shSave();
+    afterChange("Loaded shipments cleared");
+  };
+  $("sh_filter").addEventListener("input", renderLoaded);
+  renderLoaded();
+}
+
+
+/* ============================================================
+   7d. ADVICE FORMS  (Export / Import charge advice)
    ============================================================ */
 
 function buildAdvice(mode){
@@ -2355,67 +2952,53 @@ function buildAdvice(mode){
 
   var h = '<div class="panel"><h3>'+(isExp?"Acceptance Charges Advice - Export":"Delivery Order Advice - Import")+'</h3><div class="body">';
 
-  /* ---- customer block (with dropdown auto-fill) ---- */
+  var p = isExp ? "a" : "i";
+  var IN = 'style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box"';
+  var INU = IN.replace('box-sizing:border-box"', 'box-sizing:border-box;text-transform:uppercase"');
+
+  /* ---- 1. AWB first: typing it fills in the shipment from the Shipment Database ---- */
   h += '<div class="fgrid" style="grid-template-columns:1fr">';
-  /* customer name - type-to-search via datalist */
-  h += fld("Customer Name *", '<input id="'+(isExp?"a":"i")+'_cust" list="'+(isExp?"a":"i")+'_custlist" autocomplete="off" placeholder="Type to search 1,892 customers..." style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box" class="req">');
-  /* hidden auto-fill fields (read by onCustInput) */
-  h += '<input type="hidden" id="'+(isExp?"a":"i")+'_cust_trn">';
-  h += '<input type="hidden" id="'+(isExp?"a":"i")+'_cust_country">';
-  h += '<input type="hidden" id="'+(isExp?"a":"i")+'_cust_paymode">';
+  h += fld("AWB # (MAWB) *", '<input id="'+p+'_mawb" placeholder="780-30000000" autocomplete="off" class="req" '+INU+'>');
+  h += '</div>';
+  h += '<div class="awbstatus" id="'+p+'_awbstatus"></div>';
+
+  /* ---- 2. shipment details: filled in from the AWB, all editable ---- */
+  h += '<div class="fgrid">';
+  h += fld("AWB Owner *", '<input id="'+p+'_cust" list="'+p+'_custlist" autocomplete="off" placeholder="Filled in from the AWB, or type to search" class="req" '+IN+'>');
+  h += fld("HAWB #", '<input id="'+p+'_hawb" placeholder="780-30000000" '+INU+'>');
+  /* Export always starts at DWC (origin), Import always ends at DWC (destination) */
+  h += fld("Origin", '<input id="'+p+'_org" value="'+(isExp?"DWC":"")+'" placeholder="'+(isExp?"DWC":"KHI")+'" '+INU+'>');
+  h += fld("Destination", '<input id="'+p+'_dst" value="'+(isExp?"":"DWC")+'" placeholder="'+(isExp?"NBO":"DWC")+'" '+INU+'>');
+  h += fld("Flight No.", '<input id="'+p+'_fltno" placeholder="e.g. 8G 401" '+IN+'>');
+  h += fld("SHC Code *", sel(p+"_shc", CFG.shcCodes.map(function(s){ return s.c; }), null, "GEN"), "req");
+  /* the time that comes from the manifest first (departure / RCF), then the one the counter records */
+  h += fld(isExp?"Departure Time & Date":"RCF Time & Date (Received at SH Facility)", '<input id="'+p+'_'+(isExp?"t2":"t1")+'" type="datetime-local" value="'+nowLocalDT()+'" '+IN+'>');
+  h += fld(isExp?"Acceptance Time & Date (RCS)":"Delivery Time & Date", '<input id="'+p+'_'+(isExp?"t1":"t2")+'" type="datetime-local" value="'+nowLocalDT()+'" '+IN+'>');
+  h += fld("Pieces *", '<input id="'+p+'_pcs" type="number" step="1" min="0" placeholder="0" class="req" '+IN+'>');
+  h += fld("Gross Weight (kg) *", '<input id="'+p+'_wt" type="number" step="0.01" min="0" placeholder="0.00" class="req" '+IN+'>');
+  h += fld("Nature of Goods", '<input id="'+p+'_nog" placeholder="e.g. General Cargo / Fresh Produce / Live Animals" '+IN+'>');
+  /* HAWB qty is optional - only entered when a shipment has several House AWBs under one MAWB */
+  h += fld("HAWB Qty (if applicable)", '<input id="'+p+'_hawbqty" type="number" step="1" min="0" placeholder="0" '+IN+'>');
   h += '</div>';
 
-  /* datalist for customer search */
-  h += '<datalist id="'+(isExp?"a":"i")+'_custlist"></datalist>';
+  /* one datalist of the customer master, shared by the AWB owner and billing party fields */
+  h += '<datalist id="'+p+'_custlist"></datalist>';
 
-  /* address + TRN */
-  h += '<div class="fgrid" style="margin-top:9px">';
-  h += fld("Customer Address", '<input id="'+(isExp?"a":"i")+'_addr" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
-  h += fld("Customer TRN", '<input id="'+(isExp?"a":"i")+'_acct" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
+  /* staff - stands alone, full width */
+  h += '<div class="fgrid" style="grid-template-columns:1fr">';
+  h += fld("Staff", '<select id="'+p+'_staff" style="border:1px solid var(--line);border-radius:5px;padding:6px 9px;background:#fff;font-size:12px;width:100%;box-sizing:border-box">'+CFG.staff.map(function(s){ return '<option'+(s===DB.staff?" selected":"")+'>'+esc(s)+'</option>'; }).join("")+'</select>');
   h += '</div>';
 
-  /* ---- cargo / AWB block ---- */
-  h += '<div class="fgrid" style="margin-top:9px">';
-  h += fld("MAWB # *", '<input id="'+(isExp?"a":"i")+'_mawb" placeholder="'+(isExp?"780-30000000":"780-30000000")+'" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box;text-transform:uppercase" class="req">');
-  h += fld("HAWB #", '<input id="'+(isExp?"a":"i")+'_hawb" placeholder="'+(isExp?"780-30000000":"780-30000000")+'" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box;text-transform:uppercase">');
-  h += '</div>';
+  /* ---- 3. billing party: who this advice is invoiced to. Its TRN and address are
+     the only customer TRN and address on the form, and the ones that print ---- */
+  h += '<div class="billband"><div class="bandtitle">Billing Party</div><div class="billgrid">';
+  h += fld("Billing Party *", '<div style="display:flex;gap:6px">'
+     + '<input id="'+p+'_bill" list="'+p+'_custlist" autocomplete="off" placeholder="Type to search '+CUSTOMERS.length.toLocaleString("en-US")+' customers" class="req" '+IN+'>'
+     + '<button class="btn sm" id="'+p+'_bill_same" type="button" title="Bill the company the AWB is booked under" style="white-space:nowrap">Same as AWB owner</button></div>');
+  h += fld("Billing Party TRN", '<input id="'+p+'_bill_trn" '+IN+'>');
+  h += fld("Billing Party Address", '<input id="'+p+'_bill_addr" '+IN+'>');
+  h += '</div></div>';
 
-  /* HAWB qty is manual/optional - only entered when a shipment actually
-     has multiple House AWBs under the one MAWB */
-  h += '<div class="fgrid" style="margin-top:9px">';
-  h += fld("HAWB Qty (if applicable)", '<input id="'+(isExp?"a":"i")+'_hawbqty" type="number" step="1" min="0" placeholder="0" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
-  h += fld("Origin", '<input id="'+(isExp?"a":"i")+'_org" value="'+(isExp?"DWC":"")+'" placeholder="'+(isExp?"DWC":"KHI")+'" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box;text-transform:uppercase">');
-  h += '</div>';
-
-  /* destination + SHC code - Export always starts at DWC (origin, above),
-     Import always starts at DWC (destination); both stay manually editable */
-  h += '<div class="fgrid" style="margin-top:9px">';
-  h += fld("Destination", '<input id="'+(isExp?"a":"i")+'_dst" value="'+(isExp?"":"DWC")+'" placeholder="'+(isExp?"NBO":"DWC")+'" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box;text-transform:uppercase">');
-  h += fld("SHC Code *", sel((isExp?"a":"i")+"_shc", CFG.shcCodes.map(function(s){ return s.c; }), null, "GEN"), "req");
-  h += '</div>';
-
-  /* flight no. + acceptance/RCF time */
-  h += '<div class="fgrid" style="margin-top:9px">';
-  h += fld("Flight No.", '<input id="'+(isExp?"a":"i")+'_fltno" placeholder="e.g. 8G 401" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
-  h += fld(isExp?"Acceptance Time & Date (RCS)":"RCF Time & Date (Received at SH Facility)", '<input id="'+(isExp?"a":"i")+'_t1" type="datetime-local" value="'+nowLocalDT()+'" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
-  h += '</div>';
-
-  /* departure/delivery time + weight */
-  h += '<div class="fgrid" style="margin-top:9px">';
-  h += fld(isExp?"Departure Time & Date":"Delivery Time & Date", '<input id="'+(isExp?"a":"i")+'_t2" type="datetime-local" value="'+nowLocalDT()+'" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
-  h += fld("Gross Weight (kg) *", '<input id="'+(isExp?"a":"i")+'_wt" type="number" step="0.01" min="0" placeholder="0.00" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box" class="req">');
-  h += '</div>';
-
-  /* pieces + nature of goods */
-  h += '<div class="fgrid" style="margin-top:9px">';
-  h += fld("Pieces *", '<input id="'+(isExp?"a":"i")+'_pcs" type="number" step="1" min="0" placeholder="0" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box" class="req">');
-  h += fld("Nature of Goods", '<input id="'+(isExp?"a":"i")+'_nog" placeholder="e.g. General Cargo / Fresh Produce / Live Animals" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
-  h += '</div>';
-
-  /* staff - stands alone, full width, like Customer Name above */
-  h += '<div class="fgrid" style="margin-top:9px;grid-template-columns:1fr">';
-  h += fld("Staff", '<select id="'+(isExp?"a":"i")+'_staff" style="border:1px solid var(--line);border-radius:5px;padding:6px 9px;background:#fff;font-size:12px;width:100%;box-sizing:border-box">'+CFG.staff.map(function(s){ return '<option'+(s===DB.staff?" selected":"")+'>'+esc(s)+'</option>'; }).join("")+'</select>');
-  h += '</div>';
   /* payment mode is chosen once, via the buttons in the Payment Breakdown
      panel below - this hidden select just keeps holding that value for
      the rest of the code (collectAdvice, dashboard filters, etc.) */
@@ -2536,8 +3119,8 @@ function buildAdvice(mode){
     dl.innerHTML = list.map(function(n){ return '<option value="'+esc(n)+'">'; }).join("");
   }
 
-  /* wire customer input → auto-fill TRN / country / paymode */
-  onCustInput(mode, $((isExp?"a":"i")+"_cust"));
+  /* billing party picker -> its TRN and address */
+  wireBillingParty(mode);
 
   /* payment mode buttons */
   var pmodes = $((isExp?"a":"i")+"_pmodes");
@@ -2694,6 +3277,9 @@ function buildAdvice(mode){
     applyAutoQty();
   }
 
+  /* AWB lookup: fills the shipment details, then re-runs the auto-charge engine */
+  wireAwbLookup(mode, applyAutoQty);
+
   /* add a charge picked from the tariff dropdown - adds automatically on selection */
   var optSel = $((isExp?"a":"i")+"_optsel");
   if(optSel && linesTbody){
@@ -2773,17 +3359,15 @@ function buildAdvice(mode){
 
   /* preview */
   $((isExp?"a":"i")+"_preview").onclick = function(){
-    var e = collectAdvice(mode);
-    if(!e.cust){ toast("Customer name is required","err"); return; }
-    if(!e.mawb){ toast("MAWB # is required","err"); return; }
+    var e = collectAdvice(mode), missing = adviceMissing(e);
+    if(missing){ toast(missing,"err"); return; }
     printAdvice(e, true);
   };
 
   /* print (direct, all copies, no preview modal) */
   $((isExp?"a":"i")+"_print").onclick = function(){
-    var e = collectAdvice(mode);
-    if(!e.cust){ toast("Customer name is required","err"); return; }
-    if(!e.mawb){ toast("MAWB # is required","err"); return; }
+    var e = collectAdvice(mode), missing = adviceMissing(e);
+    if(missing){ toast(missing,"err"); return; }
     printAdvice(e, false);
   };
 
@@ -2840,6 +3424,10 @@ function collectAdvice(mode){
   /* if the hidden paymode field was set by payment button, use that; else fall back to customer's */
   var payBtnVal = $(p+"_paymode").value;
   if(payBtnVal) paymode = payBtnVal;
+
+  var billTo = $(p+"_bill").value.trim();
+  var billTrn = $(p+"_bill_trn").value.trim();
+  var billAddr = $(p+"_bill_addr").value.trim();
 
   /* gather charge lines */
   var tbody = $(p+"_lines");
@@ -2913,12 +3501,17 @@ function collectAdvice(mode){
     ref: $(p+"_ref") ? $(p+"_ref").value : previewRef(mode),
     date: fmtD(new Date()),
     ts: new Date().toISOString(),
-    cust: cust,
+    cust: cust,             /* the AWB owner - Register, Dashboard and Handover report on this */
     cust_trn: trn,
     cust_country: country,
     cust_paymode: paymode,
-    acct: $(p+"_acct").value.trim(),
-    addr: $(p+"_addr").value.trim(),
+    billTo: billTo,         /* who the advice is invoiced to; its TRN and address print */
+    billTrn: billTrn,
+    billAddr: billAddr,
+    /* the billing TRN and address again under their earlier names, so a backup
+       taken on this version still prints correctly if restored into an earlier one */
+    acct: billTrn,
+    addr: billAddr,
     mawb: $(p+"_mawb").value.trim().toUpperCase(),
     hawb: $(p+"_hawb").value.trim().toUpperCase(),
     hawbqty: num($(p+"_hawbqty") ? $(p+"_hawbqty").value : 0),
@@ -2947,10 +3540,18 @@ function collectAdvice(mode){
   };
 }
 
+/** The first thing an advice still needs before it can be previewed, printed
+    or saved, or "" when nothing is missing. */
+function adviceMissing(e){
+  if(!e.mawb) return "AWB # is required";
+  if(!e.cust) return "AWB owner is required";
+  if(!e.billTo) return "Billing party is required";
+  return "";
+}
+
 function saveAdvice(mode){
-  var e = collectAdvice(mode);
-  if(!e.cust){ toast("Customer name is required","err"); return; }
-  if(!e.mawb){ toast("MAWB # is required","err"); return; }
+  var e = collectAdvice(mode), missing = adviceMissing(e);
+  if(missing){ toast(missing,"err"); return; }
   if(!e.wt || !e.pcs){ toast("Weight and pieces are required","err"); return; }
 
   /* validate charge lines */
@@ -2973,10 +3574,10 @@ function saveAdvice(mode){
   e.type = "invoice";
 
   DB.entries.push(e);
-  /* track customer name */
-  if(DB.customers.indexOf(e.cust) < 0){
-    DB.customers.push(e.cust);
-  }
+  /* remember names typed that are not yet in the list, for both pickers */
+  [e.cust, e.billTo].forEach(function(n){
+    if(n && DB.customers.indexOf(n) < 0) DB.customers.push(n);
+  });
   save();
   toast("Invoice saved: "+e.ref+"  |  "+e.cust+"  |  AED "+money(e.total),"ok");
 
@@ -3341,9 +3942,19 @@ function bars(sel, items){
    10. PRINTABLE CHARGE ADVICE
    ============================================================ */
 
+/** The party an advice is invoiced to. load() backfills invoices saved before
+    the billing party existed; this also covers a record that has not been
+    through load() yet, such as one restored from a backup in this session. */
+function billingOf(e){
+  return e.billTo !== undefined
+    ? { name: e.billTo, trn: e.billTrn, addr: e.billAddr }
+    : { name: e.cust, trn: e.acct, addr: e.addr };
+}
+
 function docCopy(e, copyName){
   var isExp = e.mode==="Export";
   var C = CFG.company;
+  var bill = billingOf(e);
   var h = '<div class="doc">';
   var mark = '<div class="logo"><img src="'+(DB.logo||LOGO_PRINT)+'" alt="SolitAir"></div>';
   h += '<div class="dh">' + mark
@@ -3355,10 +3966,10 @@ function docCopy(e, copyName){
 
   h += '<table class="meta"><tbody>'
      + row2("Ref No.", e.ref, "Date Issued", fmtDT(e.ts))
-     + row2("Customer Name", e.cust, "Customer TRN", e.acct)
-     + row2("Customer Address", e.addr, "Payment Mode", e.payMode + (e.payMode==="Cash + Card" ? "  (Cash "+money(e.pay.cash)+" / Card "+money(e.pay.card)+")" : ""))
+     + row2("Billing Party", bill.name, "Billing Party TRN", bill.trn)
+     + row2("Billing Party Address", bill.addr, "Payment Mode", e.payMode + (e.payMode==="Cash + Card" ? "  (Cash "+money(e.pay.cash)+" / Card "+money(e.pay.card)+")" : ""))
      + row2("MAWB #", e.mawb, "HAWB #", e.hawb + (e.hawbqty ? "  (Qty: "+e.hawbqty+")" : ""))
-     + row2("Origin", e.org, "Destination", e.dst)
+     + row2("AWB Owner", e.cust, "Origin / Destination", [e.org, e.dst].filter(Boolean).join(" / "))
      + row2("Nature of Goods", e.nog, "SHC Code", (e.shc||"")+(e.shc?"  ("+shcLabel(e.shc)+")":""))
      + row2("Flight No.", e.fltno, "Gross Weight / Pieces", money(e.wt)+" kg  /  "+(e.pcs||0)+" pcs")
      + (isExp
@@ -3971,7 +4582,7 @@ function seedDemo(){
     DB.entries.push({
       id:"SEED"+i+Date.now(), type:"invoice", mode:s.mode, ref:d(s.back)+"/"+pad(i+1),
       ts:new Date(Date.now()-s.back*864e5).toISOString(), date:d(s.back), staff:s.staff,
-      cust:s.cust, acct:"", addr:"", mawb:s.mawb, hawb:"", org:s.mode==="Export"?"DWC":"KHI",
+      cust:s.cust, billTo:s.cust, billTrn:"", billAddr:"", acct:"", addr:"", mawb:s.mawb, hawb:"", org:s.mode==="Export"?"DWC":"KHI",
       dst:s.mode==="Export"?"NBO":"DWC", nog:shcClass(s.shc)==="perishable"?"Fresh Produce":"General Cargo",
       shc:s.shc, fltno:"", fltdate:d(s.back), ata:"", t1:t1, t2:t2,
       cls:shcClass(s.shc), wt:s.wt, pcs:s.pcs,
@@ -4988,6 +5599,8 @@ function boot(){
   seedCustomers();          // populate DB.customers from the 1,892-customer master
   refreshCustList();
   fillStaff();
+  shLoad();
+  buildShipments();
   buildAdvice("export");
   buildAdvice("import");
   llLoad();

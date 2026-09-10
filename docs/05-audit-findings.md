@@ -22,6 +22,7 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-10](#a-10) | P2 | No responsive layout; unusable on a tablet or phone | L |
 | [A-15](#a-15) | P2 | Form-field styling is inlined in 22 places, overriding the CSS that already exists | M |
 | [A-20](#a-20) | **P1** | Every local copy of the app shares one data store, so a demo copy can write into the live register | S (process) + M (code) |
+| [A-21](#a-21) | P2 | Restoring a backup does not run the data migrations until the next reload | S |
 
 ## Closed
 
@@ -174,6 +175,13 @@ function $(sel){
 
 Low risk: every currently correct call is a plain id and behaves identically.
 Verify with the full suite afterwards.
+
+**Still live in one place, confirmed while building the Shipment Database.** The
+Ctrl+S shortcut finds the open tab with `$(".page.on")`, which is always `null`, so
+pressing Ctrl+S on an advice saves nothing and shows nothing. Verified in a
+browser: with a complete advice on screen, Ctrl+S left the register empty, and the
+Save button then saved it. The helper fix above repairs the shortcut without
+touching its handler.
 
 ---
 
@@ -382,6 +390,31 @@ own storage. It does not, and the guidance has been corrected.
 
 ---
 
+## A-21 — Restoring a backup skips the data migrations {#a-21}
+
+**P2. Wrong until the page is next reloaded.**
+
+The migrations in `load()` - tagging untyped invoices (M1), giving legacy
+reception records an id (M2) and backfilling the billing party (M3) - run only
+when the page loads. **Rates & Data → Restore from Backup** replaces `DB` and calls
+`boot()` directly:
+
+```js
+DB = o; save(); boot();
+```
+
+So a backup from an older version is used unmigrated for the rest of that session.
+Until the next reload, legacy invoices without a `type` are missing from the
+Dashboard, the Lying List and Facility Security, and legacy reception records
+without an id cannot be deleted. Printing is already covered: `billingOf()` applies
+the M3 rule to any record on the fly.
+
+**Fix:** move the backfills out of `load()` into `migrateDB(db)`, call it from both
+`load()` and the restore handler, and add a spec that restores a legacy backup and
+checks the Dashboard without reloading.
+
+---
+
 ## Recommended order
 
 The housekeeping pass is done. What remains, in order:
@@ -393,9 +426,10 @@ The housekeeping pass is done. What remains, in order:
 3. **First PR:** A-02 (references) and A-04 (quota). Both touch money and data
    safety. A-02 is now a small change confined to `refFor()` / `previewRef()`.
 4. **Second PR:** A-20 (storage instance identity) - it protects the ledger.
-5. **Third PR:** A-06 (`$` helper), then A-07 (single charge formula). These
-   remove whole classes of future bug and make later refactoring safe.
-6. **Fourth PR:** A-03, A-05, A-08 - correctness and clarity.
+5. **Third PR:** A-06 (`$` helper, which also revives the dead Ctrl+S shortcut),
+   then A-07 (single charge formula). These remove whole classes of future bug and
+   make later refactoring safe.
+6. **Fourth PR:** A-03, A-05, A-08, A-21 - correctness and clarity.
 7. **When restyling:** A-15 (inline field styles). Visual change, own PR.
 8. **Backlog:** A-10, only if tablets are actually required.
 

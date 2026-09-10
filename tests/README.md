@@ -8,7 +8,7 @@ framework. **Run it before and after every change.**
 
 ```bash
 npm install          # one-time
-npm test             # everything, ~105s, exits non-zero on failure
+npm test             # everything, ~120s, exits non-zero on failure
 node tests/run-all.js 03-charges     # one spec by filename substring
 ```
 
@@ -16,15 +16,16 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 
 | Spec | Covers |
 |---|---|
-| `01-boot.spec.js` | Clean boot, all eight tabs build, embedded logo, local-time defaults |
-| `02-advice-form.spec.js` | Field defaults, customer autofill, HAWB qty, print action, modal close |
+| `01-boot.spec.js` | Clean boot, all nine tabs build, embedded logo, local-time defaults |
+| `02-advice-form.spec.js` | Field defaults, HAWB qty, print action, modal close |
 | `03-charges.spec.js` | **The tariff.** Auto-applied fees, minimums, cargo class, storage days, DG, late acceptance, optional charges, zero-line suppression |
 | `04-payments.spec.js` | Payment-mode field visibility, Cash + Card split, single-method auto-total |
 | `05-register-cash.spec.js` | Register listing, filters, `type` tagging, cash on hand, handover, delete |
 | `06-lying-list.spec.js` | Export auto-join, import exclusion, manual add, departure sweep, delete-and-re-add |
 | `07-security.spec.js` | Invoiced detection, missing-invoice alert, id-based delete under filter, block paste |
 | `08-dashboard-handover.spec.js` | Dashboard KPIs and filters, shift window figures, equipment table |
-| `09-migrations.spec.js` | Both legacy-data backfills, seeded with the old shapes |
+| `09-migrations.spec.js` | All three legacy-data backfills, seeded with the old shapes |
+| `10-awb-first.spec.js` | Shipment Database paste and CSV import, column matching, date-order detection and override, the AWB lookup and its guards (prefix, changed AWB, wrong direction), billing party autofill and validation, the saved record and the printed advice |
 
 Many cases are labelled as regressions. Each one corresponds to a bug that reached
 production. Do not delete them.

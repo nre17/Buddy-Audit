@@ -11,12 +11,13 @@ SolitAir Cargo Express Services DWC-LLC, Dubai World Central (DWC/OMDW).
 
 ## What it does
 
-Eight workspaces in one page, all driven off a single invoice register:
+Nine workspaces in one page, all driven off a single invoice register:
 
 | Tab | Purpose |
 |---|---|
-| **Export Advice** | Raise an export charge advice (form CGS-GND-F037), auto-priced from the tariff |
-| **Import Advice** | Raise an import delivery order advice (form CGS-GND-F038) |
+| **Shipment Database** | Paste the day's manifest from Excel. The advice tabs look each AWB up here |
+| **Export Advice** | Raise an export charge advice (form CGS-GND-F037): type the AWB and the shipment fills in, choose the billing party, auto-priced from the tariff |
+| **Import Advice** | Raise an import delivery order advice (form CGS-GND-F038), the same way |
 | **Lying List** | Cargo physically in the warehouse awaiting departure, with countdowns |
 | **Invoice Register** | The ledger. Every saved invoice, cash position, handovers to accounts |
 | **Shift Handover** | Shift-change report, auto-calculated from the register |
@@ -78,7 +79,8 @@ node tools/pii-scan.js       # production-data guard
 The suite drives a real headless Chromium against the actual file and asserts on
 behaviour, not on source text. It covers charge auto-application, storage day
 maths, payment-mode rules, the register, the lying-list lifecycle, cash
-reconciliation, facility security, and the two legacy-data migrations.
+reconciliation, facility security, the Shipment Database and AWB-first entry, the
+billing party, and the three legacy-data migrations.
 
 **Run `npm test` before and after every change.** This application has no type
 system and no framework; the suite is the only safety net.
@@ -105,6 +107,7 @@ Read `CLAUDE.md` before editing. The important rules in brief:
 | Bank details, company TRN | `"Not configured"` in source. Site configuration, entered per counter machine under **Rates & Data → Company & Bank Details** and stored in that browser only. |
 | Counter staff | `Counter 1` … `Counter 6`. |
 | Commercial tariff | Genuine. Confidential business information, though not personal data. |
+| Shipment manifests | Pasted into the Shipment Database on the counter machine and stored in that browser only. `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files. |
 
 Enforced by `tools/pii-scan.js`, which runs in CI on every push:
 

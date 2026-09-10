@@ -63,6 +63,7 @@ change.
 | Tax registration numbers | random digits, UAE 15-digit format | Generated, never entered. |
 | Cities and states | curated table, chosen by country | A fixed list in the generator. |
 | Air waybill numbers | `780-3090xxxx` in the demo seed and fixtures | A reserved demo band. Test specs use their own invented sequential ranges. |
+| Demo shipments | `shDemoItems()`: AWBs `780-30901001` to `780-30901010`, flights `ZZ 901` to `ZZ 910` | Generated inside the application; owners are drawn from the demo master. |
 
 ### 2.3 Staff
 
@@ -129,9 +130,11 @@ CI regenerates the demo master and fails if the committed file differs.
 
 ### 3.3 Automated — backup files
 
-CI fails if any `*.backup.json` or `data/` file is committed. Those are
-`localStorage` exports from a counter machine and contain live invoices.
-`.gitignore` blocks them.
+CI fails if any `*.backup.json` or `data/` file, or any `.csv`, `.tsv`, `.xlsx` or
+`.xls` file, is committed. Backups are `localStorage` exports from a counter
+machine and contain live invoices; spreadsheets and CSVs are how shipment
+manifests arrive, and manifests name customers and shipments. `.gitignore` blocks
+all of them.
 
 ### 3.4 Procedural — tests
 
@@ -148,12 +151,14 @@ and the suite keeps working when the master is regenerated.
 
 ## 4. Working with live data
 
-Live data lives in exactly two places, and neither is this repository:
+Live data lives in exactly three places, and none of them is this repository:
 
 1. **The counter machine's browser storage.** This is the system of record.
 2. **The end-of-shift JSON backup**, taken under Rates & Data → Download Backup.
+3. **Shipment manifests**: the Excel or CSV files pasted into the Shipment
+   Database, and the shipments loaded from them.
 
-Treat both as confidential business records:
+Treat all three as confidential business records:
 
 - Store backups on company-controlled storage. Not personal cloud accounts, not
   email, not chat.
@@ -162,6 +167,9 @@ Treat both as confidential business records:
   third-party tool, including AI assistants.
 - To reproduce a customer-specific bug, describe the *shape* of the data, or
   reproduce it against a demo record with the same characteristics.
+- To test the Shipment Database, use **Load Sample Shipments**, or build a manifest
+  from demo customers as `tests/specs/10-awb-first.spec.js` does. Never a real
+  manifest, and never a screenshot of one.
 
 ### Loading a customer list onto a counter machine
 

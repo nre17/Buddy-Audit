@@ -16,6 +16,13 @@ data/
 *-live.json
 solitair_db*.json
 
+# Shipment manifests - the files pasted or loaded into the Shipment Database -
+# name real customers and shipments.
+*.csv
+*.tsv
+*.xlsx
+*.xls
+
 # OS / editor
 .DS_Store
 Thumbs.db

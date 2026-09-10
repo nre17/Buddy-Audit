@@ -5,6 +5,72 @@ Newest first.
 
 ---
 
+## [1.2.0] — Unreleased — Shipment Database, AWB-first advices, billing party
+
+The advice tabs now start from the AWB. The day's manifest is pasted into a new
+Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
+company invoiced is chosen separately from the company the AWB is booked under.
+
+Verified by the regression suite (71 cases) and a pixel comparison of every other
+tab's panel against 1.1.0.
+
+### Added
+
+- **Shipment Database tab**, first in the tab bar. Paste the manifest from Excel,
+  heading row included, or load a CSV. Columns are matched by heading, in any
+  order. A preview lists every row with its departure or RCF time written out in
+  words, the export/import split, and a note for anything that needs attention: an
+  unknown SHC code, an owner not in the customer master, a missing gross weight,
+  an unreadable time. Also **Load Sample Shipments**, a searchable list of what is
+  loaded, and **Clear Loaded Shipments**.
+- **Date order detection** for manifest dates. Any number above 12 settles
+  day-first or month-first; when every date is ambiguous, the reading with the
+  shorter span wins and the preview says it is not certain. The order can be set
+  before importing. Excel serial dates and 12-hour times are read.
+- **AWB-first advice forms.** The AWB is the first field. Typing it fills the AWB
+  owner, origin, destination, flight number, SHC code, nature of goods, pieces,
+  gross weight, and the departure time (export) or RCF time (import). Every field
+  stays editable.
+  - Matches on digits, so hyphens and spaces do not matter, and never fills on a
+    prefix while typing.
+  - Changing the AWB to one that is not loaded clears the details filled in for the
+    previous shipment.
+  - An AWB for the other direction is not filled in; the form offers to open it on
+    the right tab.
+- **Billing party** section at the bottom of the shipment details, picked from the
+  same customer master, with its TRN and address beside it. **Same as AWB owner**
+  copies the owner. The TRN and address are cleared if the name changes to one
+  outside the master. Required to preview, print and save.
+- Migration **M3**: invoices saved before the billing party existed are billed to
+  their customer.
+- `tests/specs/10-awb-first.spec.js` (21 cases) and a migration case in
+  `09-migrations.spec.js`.
+- `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files, because
+  shipment manifests name customers and shipments.
+
+### Changed
+
+- The customer TRN and address fields at the top of the advice are gone. The only
+  TRN and address on the form are the billing party's.
+- "Customer Name" is now **AWB Owner**, on the form and on the printed advice.
+- The printed advice shows **Billing Party**, **Billing Party TRN** and **Billing
+  Party Address**. Origin and Destination share one row, so the printed page is no
+  taller.
+- The saved record keeps `cust` as the AWB owner, so the Register, Dashboard, Shift
+  Handover and exports are unchanged. New fields `billTo`, `billTrn` and
+  `billAddr`; `acct` and `addr` now mirror the billing TRN and address, so a backup
+  still prints correctly if restored into 1.1.0.
+- `APP_VERSION` is 1.2.0.
+
+### Known, still open
+
+- **A-21** *new.* Restore from Backup does not run the data migrations until the
+  next reload. Printing is covered by `billingOf()`.
+- **A-06**, a confirmed live instance: the Ctrl+S save shortcut does nothing. The
+  Save button works.
+
+---
+
 ## [1.1.0] — 2026-09-10 — Site configuration, demo data tooling, code audit
 
 Prepared the project for source control and for handover to an ERP

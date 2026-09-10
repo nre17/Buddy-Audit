@@ -1,7 +1,7 @@
 # Business Rules
 
 The commercial logic of the system. Every figure below is transcribed from
-`EXPORT_LINES` / `IMPORT_LINES` in `app/solitair-invoicing.html` (lines 3634-3723)
+`EXPORT_LINES` / `IMPORT_LINES` in `app/solitair-invoicing.html` (line range in `04-code-map.md`)
 and is asserted by `tests/specs/03-charges.spec.js`.
 
 > **These rates were signed off against the official SolitAir warehouse tariff
@@ -242,8 +242,8 @@ in at the start of the window.
 
 ## 7. Downstream consequences of saving
 
-`saveAdvice()` validates customer, MAWB, weight, pieces and at least one charge
-line, allocates the reference, then:
+`saveAdvice()` validates the AWB, the AWB owner, the billing party, weight, pieces
+and at least one charge line, allocates the reference, then:
 
 1. Pushes the invoice into `DB.entries` with `type: "invoice"`.
 2. **Export only:** auto-joins the lying list, keyed `"LLA" + invoiceId`, using the
@@ -254,3 +254,61 @@ line, allocates the reference, then:
 Deleting an invoice reverses all of it: the entry is removed, balances recalculate,
 and the matching lying-list entry is removed from both the live list and the
 cleared history so a corrected re-entry for the same AWB rejoins cleanly.
+
+---
+
+## 8. AWB owner and billing party
+
+An AWB is booked under one company and may be invoiced to another. The advice
+keeps the two apart.
+
+| | AWB owner | Billing party |
+|---|---|---|
+| Field | `cust` | `billTo`, `billTrn`, `billAddr` |
+| Comes from | The Shipment Database, or typed | The customer master; **Same as AWB owner** copies the owner |
+| Printed as | AWB Owner | Billing Party, Billing Party TRN, Billing Party Address |
+| Reported on by | Register, Dashboard, Shift Handover, exports | The printed advice |
+| Required | Yes | Yes |
+
+The billing party's TRN and address are the only customer TRN and address on the
+advice. The billing party is **never filled in automatically**: an unnoticed
+default would put the charges on the wrong company's tax document.
+
+If the billing party is changed to a name that is not in the customer master, the
+TRN and address filled in for the previous name are cleared, so no party can
+print under another party's TRN.
+
+---
+
+## 9. Shipment Database lookup
+
+Typing an AWB on an advice fills in its shipment from the Shipment Database.
+
+- **Matching** is on the AWB's digits only, so hyphens and spaces do not matter.
+  While the AWB is being typed, a shipment fills in only on an exact match that no
+  other loaded AWB extends; on Enter, or on leaving the field, an exact match is
+  enough.
+- **Fields filled:** AWB owner, origin, destination, flight number, SHC code,
+  nature of goods, pieces and gross weight, plus the departure time on an export
+  (the second timestamp) or the RCF time on an import (the first). The counter's
+  own timestamp - acceptance on an export, delivery on an import - is never
+  touched. A value missing from the manifest is left blank to be entered, and an
+  SHC code the application does not know is not applied.
+- **Changing the AWB** to one that is not loaded clears the details filled in for
+  the previous shipment. One shipment's data never sits under another's AWB.
+- **Wrong direction:** an import shipment's AWB typed on the Export Advice, or the
+  reverse, is not filled in, because the two advices price from different tariffs.
+  The form offers to open it on the right one.
+- **Everything stays editable.** Filling in sets values; it does not lock them.
+
+Storage and late-acceptance charges are calculated from these timestamps, so the
+day/month order of manifest dates is decided per import and shown in the preview
+with every date written out in words:
+
+- A first number above 12 means day-first; a second number above 12 means
+  month-first.
+- When every date is ambiguous, the reading under which the manifest covers the
+  shorter period wins, because a manifest spans a day or two, not months. A true
+  tie falls back to the browser's own date format.
+- The preview marks anything short of certain, and staff can set the order before
+  importing.

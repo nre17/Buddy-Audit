@@ -146,6 +146,7 @@ There is no deployment pipeline. A release is a file copied to counter machines.
 | R-06 | Tariff change applied incorrectly | High. Systematic mis-billing until noticed. | Low | Class A change control; rate tests in the suite | Owner |
 | R-07 | ERP migration loses history | High | Medium | Export requirements in `07-erp-handover-spec.md`; keep final backups indefinitely | Owner |
 | R-09 | A second copy of the app opened in the counter's browser writes into the live register (audit A-20) | High. Fabricated invoices and a rewritten cash position, silently. | Medium — easy to trigger by accident | Process rule in runbook §4; code fix scheduled as A-20 | Maintainer |
+| R-10 | Manifest dates read with day and month swapped, so storage charges are computed from the wrong times | High. Systematic mis-billing on every affected advice. | Low | Order detected per import; ambiguous imports flagged; every date written out in words in the preview; order can be set before importing (business rules §9) | Maintainer |
 | R-08 | Branch protection is not enforceable on the current GitHub plan, so a change can reach `main` without review or a passing CI run | Medium. A defect or a policy breach could land unreviewed. | Medium | Convention in §3.2 and `CONTRIBUTING.md`; CI still reports on every push; upgrade the plan to make it a real control | Maintainer |
 
 ---
@@ -185,6 +186,9 @@ Architectural decisions and their reasoning. Append; do not rewrite.
 | D-05 | 2026-09-10 | Hold the company TRN and bank details as per-machine runtime configuration rather than in source | Financial details must not sit in a build artefact. Reuses the existing `DB` → `CFG` override pattern already used for rates, free hours and staff. |
 | D-06 | 2026-09-10 | Keep the form codes CGS-GND-F037/F038 on printed advices, remove them from on-screen panel headings | They are document-control identifiers required on the printed record; on screen they were visual noise. |
 | D-07 | 2026-09-10 | Structural repository scanner with no denylist | A denylist or hash list of short numeric identifiers would itself disclose them. Shape-based rules give the same protection while carrying nothing sensitive. |
+| D-08 | 2026-09-11 | Keep the AWB owner and the billing party apart on the advice | An AWB booked under one company is often invoiced to another. `cust` stays the AWB owner, so every report that reads it is unchanged; the billing party gets its own fields, and its TRN is the one printed. |
+| D-09 | 2026-09-11 | Load shipments by pasting the manifest into a Shipment Database tab, stored under its own key and outside the backup | Paste from Excel matches how the manifest already arrives, and matching columns by heading survives changes to the sheet. A separate key keeps a large lookup table out of every invoice save, and a re-importable copy does not belong in the backup. XLSX upload was not built: it needs an in-browser unzip and XML reader, and copy-paste already covers it. |
+| D-10 | 2026-09-11 | Never fill a shipment into the advice for the other direction, and clear filled details when the AWB changes | Export and import price from different tariffs, and one shipment's details under another AWB would produce a plausible-looking wrong invoice. |
 
 ---
 

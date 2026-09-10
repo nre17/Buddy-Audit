@@ -12,25 +12,6 @@ module.exports = {
       } finally { await app.close(); }
     },
 
-    "customer picker autofills TRN and address, never the phone number": async (h) => {
-      // Regression: the account field used to be filled with the mobile number.
-      const app = await h.openApp();
-      try {
-        await h.tab(app.page, "Export Advice");
-        await app.page.fill("#a_cust", h.SAMPLE_CUSTOMER.name);
-        await app.page.waitForTimeout(300);
-        const got = await app.page.evaluate(() => ({
-          acct: document.getElementById("a_acct").value,
-          trn: document.getElementById("a_cust_trn").value,
-          country: document.getElementById("a_cust_country").value,
-        }));
-        h.eq(got.acct, h.SAMPLE_CUSTOMER.trn, "account field must carry the customer TRN");
-        h.eq(got.trn, h.SAMPLE_CUSTOMER.trn, "hidden TRN field");
-        h.notContains(got.acct, h.SAMPLE_CUSTOMER.phone, "the phone number must never land in the account field");
-        h.eq(got.country, h.SAMPLE_CUSTOMER.country, "country should autofill too");
-      } finally { await app.close(); }
-    },
-
     "HAWB quantity field exists and is optional": async (h) => {
       const app = await h.openApp();
       try {

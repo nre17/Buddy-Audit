@@ -25,7 +25,7 @@ to a live finance system.
    you MUST add a backfill migration in `load()` (see `docs/02-data-model.md` for
    the two existing migrations and the pattern to follow).
 3. **Never edit the file by re-typing large regions.** It contains a
-   56,000-character single line (the embedded logo, around line 3640) and about
+   56,000-character single line (the embedded logo) and about
    1,900 lines of customer master data. Use targeted, surgical edits (see
    "How to edit" below).
 4. **Run the test suite before and after every change.** `npm test`. A change that
@@ -44,6 +44,7 @@ to a live finance system.
 | `CFG.staff` | `Counter 1` … `Counter 6`. |
 | Sample-data seed, fixtures | Generated customers; air waybills in the reserved `780-3090xxxx` band. |
 | `EXPORT_LINES` / `IMPORT_LINES` | The genuine commercial tariff. Confidential, but not personal data. |
+| Shipment Database (`solitair_shipments_v1`) | Nothing in the repo. Manifests are pasted on the counter machine; demo shipments come from `shDemoItems()` in the reserved `780-3090xxxx` band. |
 
 ### Rules
 
@@ -57,6 +58,8 @@ to a live finance system.
 - **Run `npm run scan` before you commit.** It runs in CI and will fail the
   build. It is the control that keeps the statement at the top of this section
   true.
+- Never commit a shipment manifest (`.csv`, `.tsv`, `.xlsx`, `.xls`). They name
+  customers and shipments; `.gitignore` and CI block them.
 - Never commit a `localStorage` export from a counter machine. `.gitignore`
   blocks `*.backup.json` and `data/`.
 - Keep the repository private regardless. The tariff is confidential.
@@ -69,6 +72,17 @@ If you regenerate the customer master, commit the regenerated
 replace the `CUSTOMERS` array in the app in the same change.
 
 Full policy: `docs/08-data-protection.md`.
+
+### Invariants on the advice record
+
+- `cust` is the **AWB owner**. The Register, Dashboard, Shift Handover and the
+  exports all report on it. Do not repurpose it.
+- The **billing party** is `billTo` / `billTrn` / `billAddr`. Its TRN and address
+  are the only ones on the form and the ones that print (`billingOf()`).
+- `acct` and `addr` are legacy mirrors of `billTrn` / `billAddr`, kept so a backup
+  still prints correctly if restored into an earlier version. Keep writing them.
+- Shipments (`SH`, key `solitair_shipments_v1`) are a lookup table, not a record.
+  They are outside `DB` and outside the backup on purpose. See docs/02-data-model.md.
 
 ## How to edit this file
 
@@ -135,11 +149,13 @@ npm run open    # print the file:// URL to open the app
 |---|---|
 | How it is put together, why single-file | `docs/01-architecture.md` |
 | Persisted shapes, migrations, storage keys | `docs/02-data-model.md` |
-| Tariff logic, auto-charge rules, VAT, storage | `docs/03-business-rules.md` |
+| Tariff logic, auto-charge rules, VAT, storage, AWB owner and billing party, shipment lookup | `docs/03-business-rules.md` |
 | Line-range map and function index | `docs/04-code-map.md` |
 | Known defects and tech debt, prioritised | `docs/05-audit-findings.md` |
 | Backup, recovery, deployment to staff | `docs/06-operations-runbook.md` |
 | Process spec written for the ERP vendor | `docs/07-erp-handover-spec.md` |
+| What data the repository may hold, and the guards | `docs/08-data-protection.md` |
+| Change classes, release and rollback, risks, decisions | `docs/09-governance.md` |
 
 ## Working agreement
 
