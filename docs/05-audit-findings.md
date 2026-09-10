@@ -23,7 +23,6 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-15](#a-15) | P2 | Form-field styling is inlined in 22 places, overriding the CSS that already exists | M |
 | [A-20](#a-20) | **P1** | Every local copy of the app shares one data store, so a demo copy can write into the live register | S (process) + M (code) |
 | [A-21](#a-21) | P2 | Restoring a backup does not run the data migrations until the next reload | S |
-| [A-22](#a-22) | **P1** | A counter machine has no customer master with TRNs or addresses, so they cannot fill in for its customers | M |
 
 ## Closed
 
@@ -36,6 +35,7 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-16](#a-16) | No version identifier in the application | `APP_VERSION` added and shown under Rates & Data. |
 | [A-18](#a-18) | `dayKey()` was a no-op and the reference expression was duplicated four times | Replaced by `refFor()` / `previewRef()`. A *tidying* fix — the underlying A-02 defect is still open, but now has one place to fix it. |
 | [A-19](#a-19) | Duplicated date formatting and dead CSS | `ymd()` helper introduced; six dead CSS rules removed. |
+| [A-22](#a-22) | No customer master with TRNs or addresses on a counter machine | **Accepted by decision D-11.** The application is a prototype on demo customer data, shown on the Customer Database tab; the real customer master belongs in the ERP. |
 
 All closures were verified by the 50-case regression suite plus a pixel-level
 screenshot comparison across all eight tabs, before and after. Rendering is
@@ -418,33 +418,26 @@ checks the Dashboard without reloading.
 
 ## A-22 — No customer master with TRNs on a counter machine {#a-22}
 
-**P1. Blocks rolling 1.1.0 or later out to a counter machine.**
+**P1 as found. ACCEPTED by decision D-11: the application is a prototype on demo
+customer data.**
 
 Customer details - TRN, address, country, payment mode - exist only in the
 `CUSTOMERS` array inside the application file, and from 1.1.0 that array is the
 demo master. The data a machine holds itself has names only: `DB.customers` is a
-list of strings, and a backup is `DB`. So on a counter machine:
-
-- the AWB owner and billing party pickers offer the machine's customer names, but
-- `resolveCustomer()` finds none of them in the demo master, so the billing
-  party's TRN and address never fill in, and
-- every AWB owner is noted as "not in the customer master" in the Shipment
-  Database preview and on the advice.
+list of strings, and a backup is `DB`. So on a machine holding its own customer
+names, the pickers offer those names but `resolveCustomer()` finds none of them,
+the billing party's TRN and address never fill in, and every AWB owner is noted
+as "not in the customer master".
 
 Verified in a browser with a name held in `DB.customers` but not in the demo
 master: the picker offers it, and choosing it as the billing party leaves the TRN
 and address empty.
 
-A machine still running a build from before 1.1.0 is unaffected, because its own
-file still carries its master. Replacing that file with 1.1.0 or later removes TRN
-and address autofill for every customer. Restoring a backup does not put it back,
-because a backup holds names only.
-
-**Fix:** a per-machine customer master - pasted from Excel like the manifest,
-stored in that browser, included in the backup - consulted by `resolveCustomer()`
-before the embedded demo master.
-
-**Until then:** do not roll 1.1.0 or later out to a counter machine.
+**Decision (D-11):** no per-machine customer master is built. The application is
+a prototype that runs on demo customer data, shown on the Customer Database tab,
+for demonstration and the ERP handover. The real customer master, with its TRNs
+and addresses, belongs in the ERP - see `07-erp-handover-spec.md`. Builds from
+1.1.0 are therefore not for rollout to a counter machine.
 
 ---
 
@@ -452,20 +445,18 @@ before the embedded demo master.
 
 The housekeeping pass is done. What remains, in order:
 
-1. **Before any counter machine gets 1.1.0 or later:** A-22. Until then the
-   billing party's TRN and address cannot fill in there.
-2. **Today, if not already running:** the daily backup routine (A-01) - process
+1. **Today, if not already running:** the daily backup routine (A-01) - process
    only, no code. It is still the largest risk in the system.
-3. **Today, also process-only:** stop opening any second copy of the app in the
+2. **Today, also process-only:** stop opening any second copy of the app in the
    counter's browser (A-20). Then schedule the code fix.
-4. **First PR:** A-02 (references) and A-04 (quota). Both touch money and data
+3. **First PR:** A-02 (references) and A-04 (quota). Both touch money and data
    safety. A-02 is now a small change confined to `refFor()` / `previewRef()`.
-5. **Second PR:** A-20 (storage instance identity) - it protects the ledger.
-6. **Third PR:** A-06 (`$` helper, which also revives the dead Ctrl+S shortcut),
+4. **Second PR:** A-20 (storage instance identity) - it protects the ledger.
+5. **Third PR:** A-06 (`$` helper, which also revives the dead Ctrl+S shortcut),
    then A-07 (single charge formula). These remove whole classes of future bug and
    make later refactoring safe.
-7. **Fourth PR:** A-03, A-05, A-08, A-21 - correctness and clarity.
-8. **When restyling:** A-15 (inline field styles). Visual change, own PR.
-9. **Backlog:** A-10, only if tablets are actually required.
+6. **Fourth PR:** A-03, A-05, A-08, A-21 - correctness and clarity.
+7. **When restyling:** A-15 (inline field styles). Visual change, own PR.
+8. **Backlog:** A-10, only if tablets are actually required.
 
 Run `npm run verify` before and after every one of these.

@@ -5,9 +5,9 @@
 advice and invoicing process as it currently operates at DWC.
 **Audience:** the ERP implementation team.
 
-This describes a working system in daily production use, not a wish list. Where the
-current tool has a known limitation, it is marked **[GAP]** so the ERP does not
-inherit it.
+This describes the counter process as it runs, demonstrated by a working prototype
+on demo data - not a wish list. Where the prototype has a known limitation, it is
+marked **[GAP]** so the ERP does not inherit it.
 
 ---
 
@@ -52,6 +52,9 @@ storage rate and the free storage window. It is not entered by staff.
 > The customer list in the demonstration application is **generated demo data**,
 > not an operational extract. Operational master data is provided separately
 > under NDA.
+>
+> The prototype deliberately has no way to load the real customer master. The ERP
+> holds it, including the TRN and address that the billing party prints.
 
 ---
 
@@ -259,8 +262,8 @@ These are the constraints it cannot solve and the ERP must:
     ERP should take shipment data straight from the booking or cargo management
     system, keyed by AWB, keeping the same guards: no fill across export and
     import, and no stale details left under a changed AWB.
-12. **A billing party distinct from the AWB owner**, drawn from the customer
-    master, with its TRN printed on the tax invoice.
+12. **A billing party distinct from the AWB owner**, drawn from the ERP's real
+    customer master, with its TRN and address printed on the tax invoice.
 
 ---
 

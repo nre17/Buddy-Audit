@@ -16,7 +16,7 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 
 | Spec | Covers |
 |---|---|
-| `01-boot.spec.js` | Clean boot, all nine tabs build, embedded logo, local-time defaults |
+| `01-boot.spec.js` | Clean boot, all ten tabs build, embedded logo, local-time defaults |
 | `02-advice-form.spec.js` | Field defaults, HAWB qty, print action, modal close |
 | `03-charges.spec.js` | **The tariff.** Auto-applied fees, minimums, cargo class, storage days, DG, late acceptance, optional charges, zero-line suppression |
 | `04-payments.spec.js` | Payment-mode field visibility, Cash + Card split, single-method auto-total |
@@ -26,6 +26,7 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 | `08-dashboard-handover.spec.js` | Dashboard KPIs and filters, shift window figures, equipment table |
 | `09-migrations.spec.js` | All three legacy-data backfills, seeded with the old shapes |
 | `10-awb-first.spec.js` | Shipment Database paste and CSV import, column matching, date-order detection and override, the AWB lookup and its guards (prefix, changed AWB, wrong direction), billing party autofill and validation, the saved record and the printed advice |
+| `11-customer-database.spec.js` | The Customer Database tab: position, the capped list and search; every customer has a TRN and an address; the billing party list is exactly the database |
 
 Many cases are labelled as regressions. Each one corresponds to a bug that reached
 production. Do not delete them.

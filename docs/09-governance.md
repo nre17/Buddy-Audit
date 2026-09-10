@@ -17,7 +17,7 @@ borrowed from a larger organisation.
 | **Classification** | Business-critical. It is the only record of counter revenue. |
 | **Users** | Counter staff, DWC |
 | **System of record** | The browser `localStorage` of each counter machine |
-| **Lifecycle stage** | Production, pending replacement by an ERP |
+| **Lifecycle stage** | Prototype, for demonstration and the ERP handover. It runs on demo customer data and is not for counter rollout; the real customer master belongs in the ERP (D-11). |
 | **Data classification** | Confidential — commercial tariff, customer transactions, cash positions |
 
 ### Standing constraints
@@ -147,7 +147,7 @@ There is no deployment pipeline. A release is a file copied to counter machines.
 | R-07 | ERP migration loses history | High | Medium | Export requirements in `07-erp-handover-spec.md`; keep final backups indefinitely | Owner |
 | R-09 | A second copy of the app opened in the counter's browser writes into the live register (audit A-20) | High. Fabricated invoices and a rewritten cash position, silently. | Medium — easy to trigger by accident | Process rule in runbook §4; code fix scheduled as A-20 | Maintainer |
 | R-10 | Manifest dates read with day and month swapped, so storage charges are computed from the wrong times | High. Systematic mis-billing on every affected advice. | Low | Order detected per import; ambiguous imports flagged; every date written out in words in the preview; order can be set before importing (business rules §9) | Maintainer |
-| R-11 | A build from 1.1.0 onwards is rolled out to a counter machine before a per-machine customer master exists (audit A-22) | High. The billing party's TRN and address stop filling in for every customer, so tax documents rely on staff retyping TRNs. | High if a rollout goes ahead now | Hold rollout; build the per-machine customer master first | Owner |
+| R-11 | A build from 1.1.0 onwards is rolled out to a counter machine as if it were production (audit A-22) | High. It carries only demo customers, so the billing party's TRN and address would not fill in for real ones. | Low | The README, the runbook and this document mark these builds as a prototype on demo data (D-11); the real customer master belongs in the ERP | Owner |
 | R-08 | Branch protection is not enforceable on the current GitHub plan, so a change can reach `main` without review or a passing CI run | Medium. A defect or a policy breach could land unreviewed. | Medium | Convention in §3.2 and `CONTRIBUTING.md`; CI still reports on every push; upgrade the plan to make it a real control | Maintainer |
 
 ---
@@ -190,6 +190,7 @@ Architectural decisions and their reasoning. Append; do not rewrite.
 | D-08 | 2026-09-11 | Keep the AWB owner and the billing party apart on the advice | An AWB booked under one company is often invoiced to another. `cust` stays the AWB owner, so every report that reads it is unchanged; the billing party gets its own fields, and its TRN is the one printed. |
 | D-09 | 2026-09-11 | Load shipments by pasting the manifest into a Shipment Database tab, stored under its own key and outside the backup | Paste from Excel matches how the manifest already arrives, and matching columns by heading survives changes to the sheet. A separate key keeps a large lookup table out of every invoice save, and a re-importable copy does not belong in the backup. XLSX upload was not built: it needs an in-browser unzip and XML reader, and copy-paste already covers it. |
 | D-10 | 2026-09-11 | Never fill a shipment into the advice for the other direction, and clear filled details when the AWB changes | Export and import price from different tariffs, and one shipment's details under another AWB would produce a plausible-looking wrong invoice. |
+| D-11 | 2026-09-11 | Keep the application a prototype on demo customer data, shown on a Customer Database tab, and build no per-machine customer master | The real customer master, with its TRNs and addresses, belongs in the ERP. Loading it into a browser prototype would put confidential master data where it has no controls. Recorded against audit A-22. |
 
 ---
 

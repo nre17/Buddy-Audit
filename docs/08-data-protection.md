@@ -34,10 +34,11 @@ as the `CUSTOMERS` array.
 The generator is self-contained: every value is invented, and every proportion
 is a constant declared at the top of the file. It takes no input.
 
-The set is built to exercise the application properly rather than to look tidy —
-an autocomplete searching 1,892 entries, records with no email, records with no
-phone, records with no tax number, inconsistently formatted telephone numbers,
-and one deliberately malformed 13-digit TRN so the edge case has coverage.
+Every customer has a fake tax registration number and a full address, so any
+customer chosen as a billing party shows both on the advice, and the billing
+party picker lists exactly these customers. Contact details stay patchy - some
+customers have no landline, mobile or email - and telephone numbers are formatted
+inconsistently, so the application is still exercised against untidy data.
 
 Seeded with a fixed value, so the dataset is reproducible by anyone and diffs
 stay reviewable. CI regenerates it and fails if the committed file differs,
@@ -60,8 +61,8 @@ change.
 | Email domains | `<name>.example` | `.example` is reserved by RFC 2606 and IANA for documentation. It can never be delegated and can never resolve to a mailbox. |
 | Telephone numbers | contain `555` | The long-standing fictional-number convention. |
 | Company names | coined from syllable pools | Assembled from invented syllables, compared on letters and digits only so punctuation cannot mask a duplicate. |
-| Tax registration numbers | random digits, UAE 15-digit format | Generated, never entered. |
-| Cities and states | curated table, chosen by country | A fixed list in the generator. |
+| Tax registration numbers | random, unique digits in the UAE 15-digit format, one per customer | Generated, never entered. |
+| Addresses, cities and states | curated tables, chosen by country | Fixed lists in the generator; every customer has one. |
 | Air waybill numbers | `780-3090xxxx` in the demo seed and fixtures | A reserved demo band. Test specs use their own invented sequential ranges. |
 | Demo shipments | `shDemoItems()`: AWBs `780-30901001` to `780-30901010`, flights `ZZ 901` to `ZZ 910` | Generated inside the application; owners are drawn from the demo master. |
 
@@ -171,14 +172,13 @@ Treat all three as confidential business records:
   from demo customers as `tests/specs/10-awb-first.spec.js` does. Never a real
   manifest, and never a screenshot of one.
 
-### Customer details on a counter machine
+### Customer details
 
-The application ships with the demo master, and a backup holds customer **names**
-only. Restoring a backup gives the pickers a machine's customer names, but not
-their TRNs or addresses, which exist only in the master inside the application
-file. There is not yet a way to load a real customer master onto a machine - see
-audit A-22 - so do not roll a build from 1.1.0 onwards out to a counter machine
-until there is.
+The application runs on the demo master, shown on the Customer Database tab. A
+backup holds customer **names** only, so restoring one never brings TRNs or
+addresses with it. By decision there is no way to load a real customer master
+into this prototype: the real master, with its TRNs and addresses, belongs in the
+ERP (`09-governance.md` D-11).
 
 ---
 

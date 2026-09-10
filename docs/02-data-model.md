@@ -13,7 +13,7 @@ Two objects, two `localStorage` keys. Everything else is derived at render time.
   openingDate:    "",       // "YYYY-MM-DD"
   entries:        [],       // THE LEDGER. invoices and cash handovers. see below
   seq:            { export: 0, import: 0 },   // invoice reference counters
-  customers:      [],       // names only, seeded from the CUSTOMERS master
+  customers:      [],       // AWB owner picker: CUSTOMERS names plus owners typed by hand
   staff:          "Counter 1",  // currently signed-in counter staff
   rates:          {},       // per-line rate overrides from the Rates & Data tab
   logo:           null,     // data: URI if a custom logo was uploaded, else null

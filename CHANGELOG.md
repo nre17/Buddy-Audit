@@ -11,7 +11,7 @@ The advice tabs now start from the AWB. The day's manifest is pasted into a new
 Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
 company invoiced is chosen separately from the company the AWB is booked under.
 
-Verified by the regression suite (71 cases) and a pixel comparison of every other
+Verified by the regression suite (74 cases) and a pixel comparison of every other
 tab's panel against 1.1.0.
 
 ### Added
@@ -23,6 +23,11 @@ tab's panel against 1.1.0.
   unknown SHC code, an owner not in the customer master, a missing gross weight,
   an unreadable time. Also **Load Sample Shipments**, a searchable list of what is
   loaded, and **Clear Loaded Shipments**.
+- **Customer Database tab**, second in the tab bar: the demo customer master the
+  advices use for the AWB owner, the billing party and its TRN and address,
+  searchable by name, TRN, city, country or email. Every demo customer now has a
+  fake TRN and a full address, and the billing party picker lists exactly these
+  customers.
 - **Date order detection** for manifest dates. Any number above 12 settles
   day-first or month-first; when every date is ambiguous, the reading with the
   shorter span wins and the preview says it is not certain. The order can be set
@@ -43,8 +48,8 @@ tab's panel against 1.1.0.
   outside the master. Required to preview, print and save.
 - Migration **M3**: invoices saved before the billing party existed are billed to
   their customer.
-- `tests/specs/10-awb-first.spec.js` (21 cases) and a migration case in
-  `09-migrations.spec.js`.
+- `tests/specs/10-awb-first.spec.js` (21 cases), `tests/specs/11-customer-database.spec.js`
+  (3 cases), and a migration case in `09-migrations.spec.js`.
 - `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files, because
   shipment manifests name customers and shipments.
 
@@ -61,6 +66,10 @@ tab's panel against 1.1.0.
   `billAddr`; `acct` and `addr` now mirror the billing TRN and address, so a backup
   still prints correctly if restored into 1.1.0.
 - `APP_VERSION` is 1.2.0.
+- **This is a prototype on demo customer data** (decision D-11). Customer TRNs and
+  addresses exist only for the demo companies, so builds from 1.1.0 are not for
+  counter rollout; the real customer master belongs in the ERP. Recorded as audit
+  A-22, accepted.
 
 ### Known, still open
 
@@ -68,11 +77,6 @@ tab's panel against 1.1.0.
   next reload. Printing is covered by `billingOf()`.
 - **A-06**, a confirmed live instance: the Ctrl+S save shortcut does nothing. The
   Save button works.
-- **A-22** *new, P1.* A counter machine has no customer master with TRNs or
-  addresses: the embedded master is demo data and backups hold names only. The
-  billing party's TRN and address therefore cannot fill in for a machine's own
-  customers. **Do not roll 1.1.0 or later out to a counter machine until this is
-  fixed.**
 
 ---
 

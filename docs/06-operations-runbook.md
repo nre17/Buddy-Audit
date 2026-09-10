@@ -111,9 +111,10 @@ buttons on that tab.
 
 ## 3. Rolling out a new version to staff
 
-> **Hold: do not roll out 1.1.0 or later yet.** Those builds carry only the demo
-> customer master, and a machine cannot yet load its own, so customer TRNs and
-> addresses would stop filling in. See audit A-22.
+> **Builds from 1.1.0 are a prototype, not for counter rollout.** They run on the
+> demo customer master shown on the Customer Database tab, so customer TRNs and
+> addresses fill in only for demo companies. The real customer master belongs in
+> the ERP. See decision D-11 in `09-governance.md`.
 
 > Company and bank details, staff names, tariff overrides and all invoice data
 > live in the browser, not in the HTML file. Replacing the file does not erase

@@ -265,7 +265,7 @@ keeps the two apart.
 | | AWB owner | Billing party |
 |---|---|---|
 | Field | `cust` | `billTo`, `billTrn`, `billAddr` |
-| Comes from | The Shipment Database, or typed | The customer master; **Same as AWB owner** copies the owner |
+| Comes from | The Shipment Database, or typed | The Customer Database - the picker lists exactly its customers; **Same as AWB owner** copies the owner |
 | Printed as | AWB Owner | Billing Party, Billing Party TRN, Billing Party Address |
 | Reported on by | Register, Dashboard, Shift Handover, exports | The printed advice |
 | Required | Yes | Yes |

@@ -3,19 +3,22 @@
 Demo customer master generator.
 
 Produces `fixtures/customers.demo.json` - 1,892 fictional trading companies,
-used as the customer master in `app/solitair-invoicing.html` and as the source of
-`h.SAMPLE_CUSTOMER` in the test harness.
+used as the customer master in `app/solitair-invoicing.html`, listed on the
+Customer Database tab, and the source of `h.SAMPLE_CUSTOMER` in the test harness.
 
 Why generate rather than hand-write
 -----------------------------------
-The counter application is only meaningfully exercised against a customer list of
-realistic size and messiness: an autocomplete searching a couple of thousand
-entries, records with no email, records with no phone, records with no tax
-number, inconsistently formatted phone numbers, and the occasional malformed
-value. Writing that by hand is impractical; maintaining it by hand is worse.
+The counter application is only meaningfully exercised against a customer list
+of realistic size: an autocomplete searching a couple of thousand entries, with
+contact details typed as inconsistently as real counter data is. Writing that by
+hand is impractical; maintaining it by hand is worse.
 
-Everything here is invented. The proportions below are chosen to produce a
-plausible working set. Company names are coined from syllable pools, so the
+Every customer has a fake tax registration number and a full address, so any
+customer chosen as a billing party shows both on the advice. Contact details stay
+patchy - some customers have no landline, mobile or email - so the application is
+still exercised against missing values.
+
+Everything here is invented. Company names are coined from syllable pools, so the
 output is fiction by construction.
 
 Safety properties, enforced by tools/pii-scan.js
@@ -23,8 +26,8 @@ Safety properties, enforced by tools/pii-scan.js
   * Email domains use the `.example` TLD, permanently reserved by RFC 2606 and
     IANA for documentation. It can never be delegated to a real mailbox.
   * Telephone numbers use the 555 fictional-number convention.
-  * Tax registration numbers are random digits in the UAE 15-digit format.
-  * Cities and states come from the curated table below.
+  * Tax registration numbers are random, unique digits in the UAE 15-digit format.
+  * Addresses and cities come from the curated tables below.
 
 Deterministic: seeded with SEED, so the dataset is reproducible by anyone and
 diffs stay reviewable. CI regenerates it and fails if the committed file differs.
@@ -42,23 +45,12 @@ SEED = 20260910
 RECORDS = 1892
 
 # ---------------------------------------------------------------- proportions
-# How complete a record is. Counter data is patchy, so the demo set is too:
-# roughly two records in five have no address and no email, half have no
-# landline, most have no separate mobile. Tuned to keep the application
-# exercised against a missing value everywhere it reads one.
-P_ADDR = 0.61
+# How complete the contact details are. Counter data is patchy, so the demo set
+# is too: half the customers have no landline, most have no separate mobile, and
+# about two in five have no email. The TRN, address and city are always present.
 P_PHONE = 0.50
 P_MOBILE = 0.23
 P_EMAIL = 0.61
-P_CITY = 0.46
-P_STATE = 0.21
-
-# Only a minority of counter customers are VAT-registered, so only a minority
-# carry a tax number.
-TRN_FULL = 134            # records with a well-formed 15-digit TRN
-TRN_MALFORMED = 1         # one 13-digit TRN, so the app is exercised against it
-TRN_BLANK = 1             # one with the field left empty entirely
-# every remaining record carries the literal "N/A"
 
 # ---------------------------------------------------------------- word pools
 
@@ -93,8 +85,8 @@ SUFFIXES = (
 
 # a counter at DWC serves mostly UAE forwarders, with a long international tail
 COUNTRIES = (
-    ["United Arab Emirates"] * 1166 + ["N/A"] * 491 + ["India"] * 32 +
-    ["China"] * 25 + ["Saudi Arabia"] * 19 + ["United States of America"] * 18 +
+    ["United Arab Emirates"] * 1657 + ["India"] * 32 + ["China"] * 25 +
+    ["Saudi Arabia"] * 19 + ["United States of America"] * 18 +
     ["United Kingdom"] * 14 + ["Pakistan"] * 12 + ["Bangladesh"] * 9 +
     ["Turkey"] * 9 + ["Hong Kong"] * 8 + ["Kenya"] * 7 + ["Egypt"] * 6 +
     ["Oman"] * 6 + ["Qatar"] * 5 + ["Kuwait"] * 5 + ["Singapore"] * 5 +
@@ -112,44 +104,64 @@ MAILBOXES = [
     "customerservice", "airfreight", "contact", "dubai", "enquiry",
 ]
 
-ADDRESS_FORMS = [
-    "Warehouse {n}, Jebel Ali Free Zone South",
-    "Office {n}, Dubai Airport Free Zone, Block {b}",
-    "Building {b}{n}, Dubai South Logistics District",
-    "Unit {n}, Al Quoz Industrial Area {d}",
-    "Office {n}, {b} Business Tower, Business Bay",
-    "PO Box {p}, Deira",
-    "Warehouse {n}, Ras Al Khor Industrial {d}",
-    "Office {n}, DAFZA West Wing-PO Box {p}",
-    "Plot {n}, DWC Cargo Village",
-    "Shop {n}, Al Fahidi Street, Bur Dubai",
-    "Unit {n}, JAFZA North-PO Box {p}",
-    "{b} Tower, Floor {d}, Sheikh Zayed Road",
+# ---------------------------------------------------------------- addresses
+# UAE customers sit in the free zones and industrial areas, each address paired
+# with the city (and emirate, where it differs) it is actually in.
+UAE_ADDRESSES = [
+    ("Warehouse {n}, Jebel Ali Free Zone South", "Jebel Ali", "Dubai"),
+    ("Unit {n}, JAFZA North, PO Box {p}", "Jebel Ali", "Dubai"),
+    ("Office {n}, Dubai Airport Free Zone, Block {b}", "Dubai", ""),
+    ("Office {n}, DAFZA West Wing, PO Box {p}", "Dubai", ""),
+    ("Building {b}{n}, Dubai South Logistics District", "Dubai South", "Dubai"),
+    ("Plot {n}, DWC Cargo Village", "Dubai South", "Dubai"),
+    ("Unit {n}, Al Quoz Industrial Area {d}", "Dubai", ""),
+    ("Warehouse {n}, Ras Al Khor Industrial Area {d}", "Dubai", ""),
+    ("Office {n}, {b} Business Tower, Business Bay", "Dubai", ""),
+    ("{b} Tower, Floor {d}, Sheikh Zayed Road", "Dubai", ""),
+    ("Shop {n}, Al Fahidi Street, Bur Dubai", "Dubai", ""),
+    ("PO Box {p}, Deira", "Dubai", ""),
+    ("Warehouse {n}, Sharjah Airport International Free Zone", "Sharjah", ""),
+    ("Office {n}, Al Majaz {d}", "Sharjah", ""),
+    ("Unit {n}, Khalifa Industrial Zone", "Abu Dhabi", ""),
+    ("Office {n}, Al Maryah Island", "Abu Dhabi", ""),
+    ("Warehouse {n}, Ajman Free Zone", "Ajman", ""),
+    ("Unit {n}, RAK Economic Zone", "Ras Al Khaimah", ""),
+    ("Warehouse {n}, Fujairah Free Zone", "Fujairah", ""),
 ]
 
+# everyone else gets a business-district address in a city of their own country
+INTL_ADDRESS_FORMS = [
+    "{n} {road}",
+    "{n} {road}, {district}",
+    "Unit {n}, {district} Business Park",
+    "Office {n}, Floor {d}, {b} Tower",
+    "Warehouse {n}, {district} Industrial Area",
+    "Plot {n}, {district} Logistics Park",
+]
+ROADS = ["Harbour Road", "Station Road", "Airport Road", "Market Street",
+         "Park Avenue", "Canal Street", "Cargo Way", "Trade Centre Road"]
+DISTRICTS = ["Central", "North", "South", "East", "West", "Port", "Airport", "Old Town"]
 BLOCKS = ["A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "M", "N"]
 
 CITIES = {
-    "United Arab Emirates": [
-        ("Dubai", "Dubai"), ("Dubai", "Dubai"), ("Dubai", "Dubai"),
-        ("Sharjah", "Sharjah"), ("Abu Dhabi", "Abu Dhabi"),
-        ("Ajman", "Ajman"), ("Jebel Ali", "Dubai"), ("Deira", "Dubai"),
-        ("Dubai South", "Dubai"), ("Ras Al Khaimah", "Ras Al Khaimah"),
-        ("Fujairah", "Fujairah"), ("Al Ain", "Abu Dhabi"),
-    ],
     "India": [("Mumbai", "Maharashtra"), ("Delhi", ""), ("Chennai", "Tamil Nadu"), ("Kochi", "Kerala")],
-    "China": [("Shanghai", ""), ("Guangzhou", ""), ("Shenzhen", ""), ("Beijing", "")],
+    "China": [("Shanghai", ""), ("Guangzhou", "Guangdong"), ("Shenzhen", "Guangdong"), ("Beijing", "")],
     "Saudi Arabia": [("Riyadh", ""), ("Jeddah", ""), ("Dammam", "")],
+    "United States of America": [("New York", "New York"), ("Chicago", "Illinois"), ("Houston", "Texas")],
+    "United Kingdom": [("London", ""), ("Manchester", "")],
     "Pakistan": [("Karachi", "Sindh"), ("Lahore", "Punjab")],
     "Bangladesh": [("Dhaka", ""), ("Chattogram", "")],
     "Turkey": [("Istanbul", ""), ("Izmir", "")],
-    "Kenya": [("Nairobi", ""), ("Mombasa", "")],
-    "United Kingdom": [("London", ""), ("Manchester", "")],
-    "United States of America": [("New York", "New York"), ("Chicago", "Illinois"), ("Houston", "Texas")],
     "Hong Kong": [("Hong Kong", "")],
+    "Kenya": [("Nairobi", ""), ("Mombasa", "")],
+    "Egypt": [("Cairo", ""), ("Alexandria", "")],
+    "Oman": [("Muscat", ""), ("Sohar", "")],
+    "Qatar": [("Doha", "")],
+    "Kuwait": [("Kuwait City", "")],
+    "Singapore": [("Singapore", "")],
+    "Netherlands": [("Rotterdam", "South Holland"), ("Amsterdam", "North Holland")],
 }
-CITIES_FALLBACK = [("Dubai", "Dubai"), ("Istanbul", ""), ("Singapore", ""),
-                   ("Rotterdam", ""), ("Nairobi", ""), ("Colombo", "")]
+CITIES_FALLBACK = [("Singapore", ""), ("Rotterdam", "South Holland")]
 
 
 def coined_stems(rng, count):
@@ -199,15 +211,6 @@ def phone(rng, mobile):
     return ("+" + raw) if rng.randrange(2) else raw
 
 
-def trn_kinds(rng):
-    """One TRN category per record, shuffled through the set."""
-    kinds = (["full"] * TRN_FULL + ["short"] * TRN_MALFORMED +
-             ["blank"] * TRN_BLANK)
-    kinds += ["na"] * (RECORDS - len(kinds))
-    rng.shuffle(kinds)
-    return kinds
-
-
 def spread(rng, pool):
     """A shuffled copy of `pool`, sized to RECORDS."""
     out = list(pool)
@@ -224,7 +227,6 @@ def main():
     names = sorted(make_names(rng, RECORDS), key=lambda s: s.upper())
     countries = spread(rng, COUNTRIES)
     pay_modes = spread(rng, PAY_MODES)
-    kinds = trn_kinds(rng)
 
     used_trns = set()
     out = []
@@ -235,53 +237,37 @@ def main():
         domain = stem + "-" + rng.choice(
             ["cargo", "logistics", "freight", "shipping", "air"]
         ) + ".example"
-        city, state = rng.choice(CITIES.get(country, CITIES_FALLBACK))
 
-        rec = {
+        if country == "United Arab Emirates":
+            form, city, state = rng.choice(UAE_ADDRESSES)
+        else:
+            form = rng.choice(INTL_ADDRESS_FORMS)
+            city, state = rng.choice(CITIES.get(country, CITIES_FALLBACK))
+        addr = form.format(
+            n=rng.randrange(1, 400), b=rng.choice(BLOCKS), d=rng.randrange(1, 5),
+            p=rng.randrange(10000, 99999), road=rng.choice(ROADS),
+            district=rng.choice(DISTRICTS),
+        )
+
+        while True:
+            trn = "100" + "".join(rng.choice("0123456789") for _ in range(12))
+            if trn not in used_trns:
+                used_trns.add(trn)
+                break
+
+        out.append({
             "no": i + 1,
             "name": name,
-            "trn": "",
-            "addr": "",
+            "trn": trn,
+            "addr": addr,
             "pay": pay_modes[i],
             "country": country,
-            "phone": "",
-            "mobile": "",
-            "email": "",
-            "city": "",
-            "state": "",
-        }
-
-        if kinds[i] == "full":
-            while True:
-                trn = "100" + "".join(rng.choice("0123456789") for _ in range(12))
-                if trn not in used_trns:
-                    used_trns.add(trn)
-                    break
-            rec["trn"] = trn
-        elif kinds[i] == "short":
-            rec["trn"] = "100" + "".join(rng.choice("0123456789") for _ in range(10))
-        elif kinds[i] == "na":
-            rec["trn"] = "N/A"
-
-        if rng.random() < P_ADDR:
-            rec["addr"] = rng.choice(ADDRESS_FORMS).format(
-                n=rng.randrange(1, 400),
-                b=rng.choice(BLOCKS),
-                d=rng.randrange(1, 5),
-                p=rng.randrange(10000, 99999),
-            )
-        if rng.random() < P_PHONE:
-            rec["phone"] = phone(rng, mobile=False)
-        if rng.random() < P_MOBILE:
-            rec["mobile"] = phone(rng, mobile=True)
-        if rng.random() < P_EMAIL:
-            rec["email"] = rng.choice(MAILBOXES) + "@" + domain
-        if rng.random() < P_CITY:
-            rec["city"] = city
-            if rng.random() < P_STATE / P_CITY:
-                rec["state"] = state
-
-        out.append(rec)
+            "phone": phone(rng, mobile=False) if rng.random() < P_PHONE else "",
+            "mobile": phone(rng, mobile=True) if rng.random() < P_MOBILE else "",
+            "email": (rng.choice(MAILBOXES) + "@" + domain) if rng.random() < P_EMAIL else "",
+            "city": city,
+            "state": state if state and state != city else "",
+        })
 
     json.dump(out, sys.stdout, ensure_ascii=False, indent=1)
     sys.stdout.write("\n")

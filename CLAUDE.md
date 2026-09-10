@@ -6,10 +6,11 @@ Project instructions for Claude Code. Read this fully before touching any file.
 
 A single-file, offline, browser-based charge advice and invoicing system for the
 cargo counter at SolitAir Cargo Express Services DWC-LLC (Dubai World Central).
-It is **in daily production use by counter staff.** Treat every change as a change
-to a live finance system.
+It is a **prototype** for demonstration and the ERP handover, running on demo
+data, but its charge logic is what the ERP will be specified from. Treat every
+change as carefully as a change to a live finance system.
 
-- The entire application is one file: `app/solitair-invoicing.html` (~4,980 lines).
+- The entire application is one file: `app/solitair-invoicing.html` (~5,700 lines).
 - No build step. No server. No npm dependencies at runtime.
 - It is opened by double-clicking the file (`file://` protocol) in a browser.
 - All data persists to **browser `localStorage` only**. There is no database.
@@ -39,7 +40,7 @@ to a live finance system.
 
 | In the repo | What it is |
 |---|---|
-| `CUSTOMERS` (the large array near the top) | 1,892 fictional companies from `tools/generate-customers.py`. Emails use the reserved `.example` TLD, phone numbers contain `555`. |
+| `CUSTOMERS` (the large array near the top) | 1,892 fictional companies from `tools/generate-customers.py`, each with a fake TRN and address. Listed on the Customer Database tab, and exactly what the billing party picker offers. Emails use the reserved `.example` TLD, phone numbers contain `555`. |
 | `CFG.bank`, `CFG.company.trn` | The literal string `"Not configured"`. Site configuration, entered per machine under Rates & Data, held in that browser only. |
 | `CFG.staff` | `Counter 1` … `Counter 6`. |
 | Sample-data seed, fixtures | Generated customers; air waybills in the reserved `780-3090xxxx` band. |
