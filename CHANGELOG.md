@@ -68,6 +68,11 @@ tab's panel against 1.1.0.
   next reload. Printing is covered by `billingOf()`.
 - **A-06**, a confirmed live instance: the Ctrl+S save shortcut does nothing. The
   Save button works.
+- **A-22** *new, P1.* A counter machine has no customer master with TRNs or
+  addresses: the embedded master is demo data and backups hold names only. The
+  billing party's TRN and address therefore cannot fill in for a machine's own
+  customers. **Do not roll 1.1.0 or later out to a counter machine until this is
+  fixed.**
 
 ---
 

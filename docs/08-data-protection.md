@@ -171,15 +171,14 @@ Treat all three as confidential business records:
   from demo customers as `tests/specs/10-awb-first.spec.js` does. Never a real
   manifest, and never a screenshot of one.
 
-### Loading a customer list onto a counter machine
+### Customer details on a counter machine
 
-The application ships with the demo master. To load a different list:
-
-1. Take a backup from a machine that already holds it, or prepare the list as a
-   JSON backup file.
-2. **Rates & Data → Restore from Backup.**
-
-The restored data lives in that browser only.
+The application ships with the demo master, and a backup holds customer **names**
+only. Restoring a backup gives the pickers a machine's customer names, but not
+their TRNs or addresses, which exist only in the master inside the application
+file. There is not yet a way to load a real customer master onto a machine - see
+audit A-22 - so do not roll a build from 1.1.0 onwards out to a counter machine
+until there is.
 
 ---
 

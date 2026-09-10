@@ -147,6 +147,7 @@ There is no deployment pipeline. A release is a file copied to counter machines.
 | R-07 | ERP migration loses history | High | Medium | Export requirements in `07-erp-handover-spec.md`; keep final backups indefinitely | Owner |
 | R-09 | A second copy of the app opened in the counter's browser writes into the live register (audit A-20) | High. Fabricated invoices and a rewritten cash position, silently. | Medium — easy to trigger by accident | Process rule in runbook §4; code fix scheduled as A-20 | Maintainer |
 | R-10 | Manifest dates read with day and month swapped, so storage charges are computed from the wrong times | High. Systematic mis-billing on every affected advice. | Low | Order detected per import; ambiguous imports flagged; every date written out in words in the preview; order can be set before importing (business rules §9) | Maintainer |
+| R-11 | A build from 1.1.0 onwards is rolled out to a counter machine before a per-machine customer master exists (audit A-22) | High. The billing party's TRN and address stop filling in for every customer, so tax documents rely on staff retyping TRNs. | High if a rollout goes ahead now | Hold rollout; build the per-machine customer master first | Owner |
 | R-08 | Branch protection is not enforceable on the current GitHub plan, so a change can reach `main` without review or a passing CI run | Medium. A defect or a policy breach could land unreviewed. | Medium | Convention in §3.2 and `CONTRIBUTING.md`; CI still reports on every push; upgrade the plan to make it a real control | Maintainer |
 
 ---
