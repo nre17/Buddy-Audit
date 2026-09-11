@@ -7,10 +7,12 @@ For whoever owns the counter system day to day. Written for a non-developer.
 ## 0. Setting up a new counter machine
 
 Do this once per machine, before anyone raises an advice on it. **A fresh copy of
-the application does not contain the company's tax number or bank details** -
-they are deliberately not in the file, so that the file can be copied around and
-kept in version control safely. Until you enter them, every printed advice will
-say `Not configured` where they belong.
+the application does not contain the company's tax number or its real bank
+details** - they are deliberately not in the file, so that the file can be copied
+around and kept in version control safely. Until you enter them, every printed
+advice says `Not configured` for the TRN and prints **invented sample bank
+details that look genuine**. Do not let an advice leave the counter before step 3
+is done.
 
 1. Copy `app/solitair-invoicing.html` to the machine and open it.
 2. Go to **Rates & Data**.
@@ -18,14 +20,14 @@ say `Not configured` where they belong.
    - Company name and address
    - Contact number
    - Company TRN
-   - The AED account block - one line per line of the printed block
-     (account name, account number, IBAN, BIC/SWIFT, bank, branch)
-   - The USD account block, the same way
+   - The bank account name, shared by both accounts
+   - For the AED account and for the USD account: account number, IBAN,
+     BIC / SWIFT, bank and branch
 4. Click **Save Details**.
 5. Under **Counter Staff**, replace `Counter 1, Counter 2, ...` with the real
    names of the people who work that counter. Click **Save**.
 6. Check the tariff under **Rates & Data** matches the current rate card.
-7. Raise one test advice and **print it**. Confirm the TRN and both bank blocks
+7. Raise one test advice and **print it**. Confirm the TRN and the bank details for both accounts
    are correct on the printed page. Then delete the test advice.
 8. If this machine is replacing an existing one, restore the latest backup now
    (section 2).
@@ -122,7 +124,7 @@ buttons on that tab.
 > Company and bank details, staff names, tariff overrides and all invoice data
 > live in the browser, not in the HTML file. Replacing the file does not erase
 > them. Verify after the upgrade rather than assuming - print one advice and
-> check the TRN and bank blocks.
+> check the TRN and the bank details.
 
 
 The app is one file. Deployment is copying that file. The data is separate from the

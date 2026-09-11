@@ -116,5 +116,24 @@ module.exports = {
         h.eq(redone[0].loc, "TO MBA", "with the corrected destination");
       } finally { await app.close(); }
     },
+
+    "removing an automatically added export keeps it off the list": async (h) => {
+      const app = await h.openApp();
+      try {
+        const t2 = await h.localDT(app.page, 6);
+        await h.fillAdvice(app.page, "export", { cust: h.SAMPLE_CUSTOMER.name, mawb: "780-30100606",
+          dst: "NBO", fltno: "8G 406", t2, wt: 100, pcs: 5 });
+        await h.saveAdvice(app.page, "export");
+        await h.tab(app.page, "Lying List");
+        h.eq(await app.page.evaluate(() => LL.items.length), 1, "added from the invoice");
+        await app.page.click("#ll_tbl [data-lldel]");
+        await app.page.waitForTimeout(150);
+        await app.page.evaluate(() => renderLying());
+        h.eq(await app.page.evaluate(() => LL.items.length), 0, "still removed after the list refreshes");
+        await app.page.reload({ waitUntil: "load" });
+        await app.page.waitForTimeout(500);
+        h.eq(await app.page.evaluate(() => LL.items.length), 0, "and after reopening");
+      } finally { await app.close(); }
+    },
   },
 };

@@ -41,7 +41,8 @@ change as carefully as a change to a live finance system.
 | In the repo | What it is |
 |---|---|
 | `CUSTOMERS` (the large array near the top) | 1,892 fictional companies from `tools/generate-customers.py`, each with a fake TRN and address. Listed on the Customer Database tab, and exactly what the AWB owner and billing party pickers offer. Emails use the reserved `.example` TLD, phone numbers contain `555`. |
-| `CFG.bank`, `CFG.company.trn` | The literal string `"Not configured"`. Site configuration, entered per machine under Rates & Data, held in that browser only. |
+| `CFG.bank` | Invented sample bank details (Desert Crest Bank; no such bank or accounts), so the printed advice shows its bank details block. Real details are entered per machine under Rates & Data, held in that browser only (decision D-16). |
+| `CFG.company.trn` | The literal string `"Not configured"`. Site configuration, entered per machine under Rates & Data, held in that browser only. |
 | `CFG.staff` | `Counter 1` … `Counter 6`. |
 | Sample-data seed, fixtures | Generated customers; air waybills in the reserved `780-3090xxxx` band. |
 | `EXPORT_LINES` / `IMPORT_LINES` | The genuine commercial tariff. Confidential, but not personal data. |
@@ -52,8 +53,11 @@ change as carefully as a change to a live finance system.
 - **Never commit a customer name, email, phone, address or tax number** - not in
   code, tests, fixtures, docs, commit messages or PR descriptions. Git keeps
   deleted files.
-- **Never put bank details or a company tax number into `CFG`.** They are
-  runtime configuration; `applySiteOverrides()` reads them from `DB`.
+- **Never put real bank details or a company tax number into `CFG`.** Only the
+  invented sample bank details may be there (D-16). Real ones are runtime
+  configuration; `applySiteOverrides()` reads them from `DB`. The printed advice
+  does not mark the sample details as invented, and must not: the counter enters
+  its own before real use.
 - **Tests must not hardcode a customer name.** Use `h.SAMPLE_CUSTOMER` /
   `h.OTHER_CUSTOMER` from the harness.
 - **Run `npm run scan` before you commit.** It runs in CI and will fail the

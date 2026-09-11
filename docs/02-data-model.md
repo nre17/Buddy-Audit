@@ -20,7 +20,7 @@ Two objects, two `localStorage` keys. Everything else is derived at render time.
   staffList:      ["Counter 1", ... "Counter 6"],
   freeHours:      { general: 48, special: 48, perishable: 8 },
   company:        null,     // site config: {name, addr, contact, trn}. see below
-  bank:           null,     // site config: {aed:[...lines], usd:[...lines]}
+  bank:           null,     // site config: {name, aed:{acc, iban, bic, bank, branch}, usd:{...}}
   sec:            []        // facility security reception records
 }
 ```
@@ -31,17 +31,21 @@ Both are `null` until someone fills in **Rates & Data → Company & Bank Details
 
 ```js
 company: { name: "...", addr: "...", contact: "...", trn: "..." }
-bank:    { aed: ["Acc Name: ...", "IBAN: ...", ...],
-           usd: ["Acc Name: ...", "IBAN: ...", ...] }
+bank:    { name: "...",
+           aed: { acc: "...", iban: "...", bic: "...", bank: "...", branch: "..." },
+           usd: { acc: "...", iban: "...", bic: "...", bank: "...", branch: "..." } }
 ```
 
 `applySiteOverrides()` copies whatever is present over `CFG.company` / `CFG.bank`
 at boot, the same way `DB.staffList`, `DB.freeHours` and `DB.rates` override their
-`CFG` counterparts.
+`CFG` counterparts. Each saved bank field is laid over the shipped sample value, so
+a field left empty prints the sample value. Bank details saved before 1.3.0 are
+free-text lines per account (`"IBAN: ..."`, `"Acc# ..."`); `bankFields()` reads
+them by their labels.
 
 **These fields exist so that the real tax number and bank account details are
 never held in the application source.** A fresh copy of the file prints
-`Not configured` in their place. They are per-machine, they are included in the
+`Not configured` for the TRN and invented sample bank details. They are per-machine, they are included in the
 JSON backup, and they must never be written back into
 `app/solitair-invoicing.html`. See
 [`08-data-protection.md`](08-data-protection.md).

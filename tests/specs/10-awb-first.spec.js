@@ -490,8 +490,10 @@ module.exports = {
         const s = await app.page.evaluate(() => {
           const doc = document.querySelector("#mBody .doc");
           const style = (sel) => getComputedStyle(doc.querySelector(sel));
-          const fills = [...doc.querySelectorAll("*")].map((el) => getComputedStyle(el).backgroundColor)
-            .filter((c) => c !== "rgba(0, 0, 0, 0)" && c !== "rgb(255, 255, 255)");
+          const fills = [...doc.querySelectorAll("*")].filter((el) => {
+            const c = getComputedStyle(el).backgroundColor;
+            return c !== "rgba(0, 0, 0, 0)" && c !== "rgb(255, 255, 255)";
+          }).map((el) => getComputedStyle(el).backgroundColor + (el.matches(".bank td.bacc") ? " on the account bars" : " on " + el.tagName + "." + el.className));
           return {
             branded: doc.classList.contains("adv"),
             title: style(".title").color,
@@ -516,8 +518,75 @@ module.exports = {
         h.eq(s.total, BLUE, "total in company blue");
         h.eq(s.totalLine, BLUE, "the total is ruled in company blue");
         h.assert(!s.green, "no green anywhere on the advice");
-        h.eq(s.fills.join(", "), "", "no dark or coloured fills: the advice is white");
+        h.eq(s.fills.join(", "), "rgb(16, 66, 255) on the account bars", "white, with company blue filling only the AED and USD account bars");
       } finally { await app.close(); }
+    },
+
+    "the printed advice carries the bank details for payment, between the total charges and the authorisation": async (h) => {
+      const app = await h.openApp();
+      try {
+        await h.fillAdvice(app.page, "export", { cust: h.SAMPLE_CUSTOMER.name, mawb: "780-30200092", wt: 100, pcs: 5 });
+        for (const mode of ["Cash", "Card", "Credit"]) {
+          await h.payMode(app.page, "export", mode);
+          await app.page.click("#a_preview");
+          await app.page.waitForTimeout(300);
+          const r = await app.page.evaluate(() => {
+            const doc = document.querySelector("#mBody .doc"), bank = doc.querySelectorAll("table.bank");
+            const follows = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+            const bars = [...doc.querySelectorAll(".bank td.bacc")], cs = bars.length ? getComputedStyle(bars[0]) : null;
+            return {
+              count: bank.length,
+              between: bank.length === 1 && follows(doc.querySelector(".items tr.tot"), bank[0]) && follows(bank[0], doc.querySelector("table.sig")),
+              text: bank.length ? bank[0].textContent.replace(/\s+/g, " ") : "",
+              bars: bars.map((b) => b.textContent.trim()).join(" | "),
+              fill: cs && cs.backgroundColor, ink: cs && cs.color,
+              exact: cs && (cs.printColorAdjust || cs.webkitPrintColorAdjust || cs.getPropertyValue("-webkit-print-color-adjust")),
+            };
+          });
+          h.eq(r.count, 1, mode + ": one bank details block");
+          h.assert(r.between, mode + ": after the total charges and before the SolitAir authorisation");
+          for (const label of ["Bank Details for Payment", "Account Name (both accounts):", "Account No.:", "IBAN:", "BIC / SWIFT:", "Bank:", "Branch:"])
+            h.contains(r.text, label, mode + ": " + label);
+          h.eq(r.bars, "AED Account | USD Account", mode + ": the AED and USD account bars");
+          h.eq(r.fill, "rgb(16, 66, 255)", mode + ": filled company blue");
+          h.eq(r.ink, "rgb(255, 255, 255)", mode + ": in white");
+          h.eq(r.exact, "exact", mode + ": kept when printing without background graphics");
+          h.contains(r.text, await app.page.evaluate(() => CFG_SHIPPED.bank.aed.bank), mode + ": the shipped bank details");
+          h.assert(!/fake|fictional|demo|sample|not configured/i.test(r.text), mode + ": nothing on the advice says the details are invented");
+          await app.page.evaluate(() => closeModal());
+        }
+      } finally { await app.close(); }
+    },
+
+    "bank details entered under Rates & Data print instead of the demo ones, and details saved by an earlier version still print": async (h) => {
+      const app = await h.openApp();
+      try {
+        await h.tab(app.page, "Rates");
+        await app.page.fill("#bk_name", "Test Account Holder");
+        await app.page.fill("#bk_aed_bank", "Test Bank One");
+        await app.page.fill("#bk_usd_branch", "Test Branch Two");
+        await app.page.click("#saveSite");
+        await app.page.waitForTimeout(200);
+        h.eq(await app.page.evaluate(() => [DB.bank.name, DB.bank.aed.bank, DB.bank.usd.branch].join(" | ")),
+          "Test Account Holder | Test Bank One | Test Branch Two", "saved as separate fields");
+        await h.fillAdvice(app.page, "export", { cust: h.SAMPLE_CUSTOMER.name, mawb: "780-30200093", wt: 100, pcs: 5 });
+        await app.page.click("#a_preview");
+        await app.page.waitForTimeout(300);
+        const printed = await app.page.$eval("#mBody table.bank", (e) => e.textContent);
+        for (const v of ["Test Account Holder", "Test Bank One", "Test Branch Two"]) h.contains(printed, v, "prints " + v);
+      } finally { await app.close(); }
+
+      const old = await h.openApp({ seed: { solitair_db: {
+        openingBalance: 0, openingNote: "", openingDate: "", entries: [], seq: { export: 0, import: 0 },
+        customers: [], staff: "Counter 1", rates: {}, logo: null,
+        bank: { aed: ["Acc Name: Old Format Holder", "Acc# 111", "IBAN: TEST-IBAN-1", "BIC/SWIFT: TESTBIC1", "Bank: Old Bank", "Branch: Old Branch"],
+                usd: ["Acc Name: Not configured", "Acc# Not configured", "Bank: Old USD Bank"] } } } });
+      try {
+        const b = await old.page.evaluate(() => [CFG.bank.name, CFG.bank.aed.acc, CFG.bank.aed.iban, CFG.bank.aed.bic, CFG.bank.aed.bank,
+          CFG.bank.aed.branch, CFG.bank.usd.bank, CFG.bank.usd.acc === CFG_SHIPPED.bank.usd.acc].join(" | "));
+        h.eq(b, "Old Format Holder | 111 | TEST-IBAN-1 | TESTBIC1 | Old Bank | Old Branch | Old USD Bank | true",
+          "earlier free-text lines are read by their labels; a Not configured line keeps the demo value");
+      } finally { await old.close(); }
     },
 
     "the live animals charge is named without Aviation": async (h) => {

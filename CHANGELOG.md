@@ -5,6 +5,51 @@ Newest first.
 
 ---
 
+## [1.3.0] — 2026-09-11 — Bank details for payment, final bug sweep
+
+Verified by the regression suite (106 cases).
+
+### Added
+
+- **Bank details for payment on every advice**, between the total charges and the
+  SolitAir authorisation: the account name for both accounts, then the AED and USD
+  accounts side by side (account number, IBAN, BIC / SWIFT, bank, branch) under
+  AED ACCOUNT and USD ACCOUNT bars filled in company blue, which keep their fill
+  when printed without background graphics. The file ships invented sample bank
+  details; a counter machine enters its own under **Rates & Data → Company & Bank
+  Details**, now as separate fields instead of free-text blocks. Details saved by
+  earlier versions are still read. (D-16)
+- Tests that a first open shows an empty Invoice Register, lying list and security
+  portal, that the first invoice fills only the register and the lying list, and
+  that Erase All Data leaves all three empty, including after reopening.
+
+### Fixed
+
+- **Export Register to Excel failed every time**: the function behind its Balances
+  sheet did not exist. (A-29)
+- **Erase All Data** now empties the lying list (A-28), and puts the shipped tariff,
+  free hours, staff list and company and bank details back at once rather than at
+  the next reload (A-36). Its warning names what is deleted.
+- **Lying list:** removing an automatically added export keeps it off the list.
+  (A-30)
+- **Facility Security:** AWBs match their invoices whatever their dashes (A-31);
+  the portal is current when opened and after an invoice is saved or deleted
+  (A-32); the reception list shows the newest AWB first (A-38).
+- **Advices:** the Staff chosen on the advice is the invoice's staff, and signing
+  in on the header sets both advices (A-33); a blank origin or destination stays
+  blank instead of becoming KHI or NBO (A-34); Ctrl+S saves the advice on screen
+  (A-37).
+- A dialog stays open when its action finds an error, such as a zero handover
+  amount. (A-35)
+- Sample data times are local, not four hours off. (A-39)
+
+### Changed
+
+- Bank details now print for every payment mode, not only Bank Transfer, Credit
+  and CASS.
+
+---
+
 ## [1.2.1] — 2026-09-11 — Sample shipments on first open
 
 Verified by the regression suite (93 cases).

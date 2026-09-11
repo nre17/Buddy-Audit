@@ -41,6 +41,18 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-25](#a-25) | Dates read month-first on a US-English browser | Fixed: every date is shown and typed day-first (decision D-13). |
 | [A-26](#a-26) | Free-hour rules could not be set to zero, and the SHC reference ignored the saved hours | Fixed. |
 | [A-27](#a-27) | The import storage readout counted "since acceptance" | Fixed: it reads "since RCF". |
+| [A-28](#a-28) | Erase All Data left the lying list in place | Fixed: the lying list is emptied with everything else. |
+| [A-29](#a-29) | Export Register to Excel failed every time | Fixed: `runningBalances()`, which it called, did not exist. |
+| [A-30](#a-30) | Removing an automatically added export from the lying list did not stick | Fixed: a removed entry stays removed. |
+| [A-31](#a-31) | The security portal matched AWBs by exact spelling | Fixed: AWBs compare by their digits. |
+| [A-32](#a-32) | The security portal showed stale invoice status | Fixed: it refreshes when opened and after an invoice is saved or deleted. |
+| [A-33](#a-33) | The advice's Staff choice was ignored | Fixed: the invoice carries the staff chosen on the advice. |
+| [A-34](#a-34) | A blank origin or destination was saved as KHI or NBO | Fixed: only the DWC end has a default. |
+| [A-35](#a-35) | A dialog closed on a validation error | Fixed: it stays open to be corrected. |
+| [A-36](#a-36) | Erase All Data left edited settings in effect until reload | Fixed: the shipped settings are put back at once. |
+| [A-37](#a-37) | Ctrl+S did nothing | Fixed at its call site; the `$()` helper itself is A-06, still open. |
+| [A-38](#a-38) | The reception list did not sort newest first | Fixed. |
+| [A-39](#a-39) | Sample data times were written in UTC | Fixed: local times, as the advice form writes them. |
 
 All closures were verified by the 50-case regression suite plus a pixel-level
 screenshot comparison across all eight tabs, before and after. Rendering is
@@ -514,6 +526,135 @@ acceptance" on both advices.
 
 ---
 
+## A-28 — Erase All Data left the lying list in place {#a-28}
+
+**P2 as found. FIXED.**
+
+**Rates & Data → Erase All Data** replaced `DB`, which holds the invoice register and
+the reception records, and then ran `boot()`. The lying list is kept under its own
+key, `solitair_lying_v1`, and `boot()` reloads it, so every entry on the list
+survived the erase, while the warning promised that everything would be deleted.
+The erase now empties the lying list as well, and a regression test checks all
+three are empty after erasing and after reopening.
+
+---
+
+## A-29 — Export Register to Excel failed every time {#a-29}
+
+**P0 as found. FIXED in 1.3.0.**
+
+`exportExcel()` built its Balances sheet from `runningBalances()`, a function that
+did not exist, so the button threw a `ReferenceError` and no file was produced.
+`runningBalances()` now returns the whole register's figures: cash on hand, card,
+credit, CASS and bank transfer totals, cash handed over, sales and the invoice
+count. A regression test downloads the workbook.
+
+---
+
+## A-30 — Removing an automatically added export did not stick {#a-30}
+
+**P2 as found. FIXED in 1.3.0.**
+
+**Remove** took an entry off the lying list, but `llSyncFromRegister()` runs on
+every refresh (every 30 seconds) and added any invoiced export AWB not already
+listed, so the entry came straight back. Removed automatic entries are now
+remembered in `LL.removed`, and listed AWBs compare by their digits.
+
+---
+
+## A-31 — The security portal matched AWBs by exact spelling {#a-31}
+
+**P2 as found. FIXED in 1.3.0.**
+
+A reception record for `78030901001` never matched the invoice for `780-30901001`,
+so the portal raised a false NOT INVOICED alert. `findInvoiceByAWB()` and the
+duplicate check now compare AWBs by their digits, as the Shipment Database does.
+
+---
+
+## A-32 — The security portal showed stale invoice status {#a-32}
+
+**P2 as found. FIXED in 1.3.0.**
+
+The reception list was drawn only when records were added or removed. Saving or
+deleting an invoice, then opening Facility Security, still showed the old status.
+The portal now redraws when its tab is opened and after an invoice is saved or
+deleted.
+
+---
+
+## A-33 — The advice's Staff choice was ignored {#a-33}
+
+**P2 as found. FIXED in 1.3.0.**
+
+Each advice has a Staff dropdown, but `collectAdvice()` took the staff from the
+header, and the header's change handler updated elements that do not exist. The
+invoice now carries the staff chosen on the advice, and signing in on the header
+sets both advices' Staff.
+
+---
+
+## A-34 — A blank origin or destination was saved as KHI or NBO {#a-34}
+
+**P1 as found. FIXED in 1.3.0.**
+
+`collectAdvice()` replaced a blank import origin with `KHI` and a blank export
+destination with `NBO`, so an advice could print a route nobody entered, and an
+export's lying list entry read `TO NBO`. Only the DWC end now has a default.
+
+---
+
+## A-35 — A dialog closed on a validation error {#a-35}
+
+**P3 as found. FIXED in 1.3.0.**
+
+The cash handover dialog's action returned `false` for an invalid amount, but
+`modal()` closed the dialog regardless, losing what had been typed. A `false`
+return now keeps the dialog open.
+
+---
+
+## A-36 — Erase All Data left edited settings in effect {#a-36}
+
+**P2 as found. FIXED in 1.3.0.**
+
+Tariff overrides, free-storage hours, the staff list and company and bank details
+are applied to `CFG` and the tariff arrays in memory. Erasing replaced `DB` but not
+those, so the old settings kept pricing and printing advices until the page was
+reloaded. The shipped configuration is now snapshotted at start-up
+(`CFG_SHIPPED`, `RATES_SHIPPED`) and put back by the erase.
+
+---
+
+## A-37 — Ctrl+S did nothing {#a-37}
+
+**P3 as found. FIXED in 1.3.0.**
+
+The shortcut looked up the visible page with `$(".page.on")`, which the `$()`
+helper treats as an id (A-06) and so never found. The call site now uses
+`document.querySelector`. The helper itself is unchanged; A-06 stays open.
+
+---
+
+## A-38 — The reception list did not sort newest first {#a-38}
+
+**P3 as found. FIXED in 1.3.0.**
+
+The sort subtracted ISO timestamp strings, which gives `NaN`, so records within a
+flow kept no reliable order. They now compare as text, newest first.
+
+---
+
+## A-39 — Sample data times were written in UTC {#a-39}
+
+**P3 as found. FIXED in 1.3.0.**
+
+**Load Sample Data** wrote acceptance and departure times with `toISOString()`,
+which is UTC, into fields read as local time, so at a UAE counter every sample
+time was four hours off. They are now local.
+
+---
+
 ## Recommended order
 
 The housekeeping pass is done. What remains, in order:
@@ -525,7 +666,7 @@ The housekeeping pass is done. What remains, in order:
 3. **First PR:** A-02 (references) and A-04 (quota). Both touch money and data
    safety. A-02 is now a small change confined to `refFor()` / `previewRef()`.
 4. **Second PR:** A-20 (storage instance identity) - it protects the ledger.
-5. **Third PR:** A-06 (`$` helper, which also revives the dead Ctrl+S shortcut),
+5. **Third PR:** A-06 (`$` helper; the dead Ctrl+S shortcut was fixed at its call site, A-37),
    then A-07 (single charge formula). These remove whole classes of future bug and
    make later refactoring safe.
 6. **Fourth PR:** A-03, A-05, A-08, A-21, A-23 - correctness and clarity.

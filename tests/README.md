@@ -16,16 +16,16 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 
 | Spec | Covers |
 |---|---|
-| `01-boot.spec.js` | Clean boot, all ten tabs build, embedded logo, local-time defaults |
-| `02-advice-form.spec.js` | Field defaults, HAWB qty, print action, modal close |
+| `01-boot.spec.js` | Clean boot, all ten tabs build, embedded logo, local-time defaults, an empty register, lying list and security portal on a first open and after Erase All Data |
+| `02-advice-form.spec.js` | Field defaults, HAWB qty, print action, modal close, the advice's Staff choice, no invented origin or destination, Ctrl+S |
 | `03-charges.spec.js` | **The tariff.** Auto-applied fees, minimums, cargo class for every SHC code on both advices (and several or unknown codes), storage days, free-hour rules, DG, late acceptance, optional charges, zero-line suppression |
 | `04-payments.spec.js` | Payment-mode fields, blank amount = full total, an amount that differs needs a reason (register vs printed advice), Cash + Card split |
-| `05-register-cash.spec.js` | Register listing, filters, `type` tagging, cash on hand, handover, delete |
-| `06-lying-list.spec.js` | Export auto-join, import exclusion, manual add, departure sweep, delete-and-re-add |
-| `07-security.spec.js` | Invoiced detection, missing-invoice alert, id-based delete under filter, block paste |
+| `05-register-cash.spec.js` | Register listing, filters, `type` tagging, cash on hand, handover (and its dialog kept open on an invalid amount), delete, Excel export, sample data times |
+| `06-lying-list.spec.js` | Export auto-join, import exclusion, manual add, departure sweep, delete-and-re-add, a removed auto-added export stays removed |
+| `07-security.spec.js` | Invoiced detection, missing-invoice alert, id-based delete under filter, block paste, AWBs matched by digits, current status when opened, newest first |
 | `08-dashboard-handover.spec.js` | Dashboard KPIs and filters, shift window figures, equipment table |
 | `09-migrations.spec.js` | All three legacy-data backfills, seeded with the old shapes |
-| `10-awb-first.spec.js` | Shipment Database paste and CSV import, column matching, date-order detection and override, AWB suggestions (prefix and tail matching, click, keyboard, closing), gross weight headings and weightless sheets, the AWB lookup and its guards (prefix, changed AWB, wrong direction blocked from saving), sample shipments on a browser's first open, manifest SHC codes that are unknown or combined, billing party autofill and validation, the saved record, the printed advice's content and company colours, and the live animals charge name, mandatory dates and times |
+| `10-awb-first.spec.js` | Shipment Database paste and CSV import, column matching, date-order detection and override, AWB suggestions (prefix and tail matching, click, keyboard, closing), gross weight headings and weightless sheets, the AWB lookup and its guards (prefix, changed AWB, wrong direction blocked from saving), sample shipments on a browser's first open, manifest SHC codes that are unknown or combined, billing party autofill and validation, the saved record, the printed advice's content, company colours and bank details for payment (shipped, site-entered and earlier-format details), and the live animals charge name, mandatory dates and times |
 | `11-customer-database.spec.js` | The Customer Database tab: position, the capped list and search; every customer has a TRN and an address; both pickers list exactly the database, never names held in the browser's saved data |
 | `12-uae-dates.spec.js` | Day-first dates: typing and showing dd/mm/yyyy, unreadable dates, every date field and dialog, the printout, register and exports, the calendar picker |
 

@@ -238,8 +238,11 @@ Modes: **Cash, Card, Cash + Card, CASS, Credit, Bank Transfer.**
   the reason in Remarks ("Amount differs from total: ..."). Total Sale stays the
   full charges. The Excel and CSV exports carry the reason too.
 
-Bank details are printed on the advice for Bank Transfer, Credit and CASS. A credit
-card slip box is printed for Card and Cash + Card.
+**Bank details for payment** are printed on every advice, between the total charges
+and the SolitAir authorisation: the account name for both accounts, then the AED
+and USD accounts side by side (account number, IBAN, BIC / SWIFT, bank, branch)
+under company-blue AED ACCOUNT and USD ACCOUNT bars. A credit card slip box is
+printed for Card and Cash + Card.
 
 ---
 
