@@ -259,7 +259,10 @@ module.exports = {
           await app.page.waitForTimeout(250);
           return text(app.page, "#toast");
         };
-        const marked = (id) => app.page.$eval("#" + id, (e) => e.closest(".f").classList.contains("bad"));
+        // the rendered colour, not just the class: the field's inline styles once
+        // hid the red even though the class was set (regression)
+        const marked = (id) => app.page.$eval("#" + id, (e) =>
+          e.closest(".f").classList.contains("bad") && getComputedStyle(e).borderTopColor === "rgb(220, 38, 38)");
 
         await h.tab(app.page, "Export Advice");
         await app.page.fill("#a_mawb", "780-30200002");

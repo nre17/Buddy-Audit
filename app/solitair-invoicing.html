@@ -2785,6 +2785,10 @@ function wireAwbLookup(mode, recalc){
   function markAwb(blocked){
     var f = awbEl.closest ? awbEl.closest(".f") : null;
     if(f) f.classList[blocked ? "add" : "remove"]("bad");
+    /* the field carries inline styles (audit A-15), which beat the .f.bad rule,
+       so the red has to be set inline as well */
+    awbEl.style.borderColor = blocked ? "var(--err)" : "var(--line)";
+    awbEl.style.background = blocked ? "#fef2f2" : "#fff";
   }
   function clearFilled(){
     set("cust", ""); set("org", isExp ? "DWC" : ""); set("dst", isExp ? "" : "DWC");
