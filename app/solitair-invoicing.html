@@ -60,6 +60,14 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .billgrid{display:grid;grid-template-columns:1.35fr .75fr 1.5fr;gap:0 12px}
 .scrolltable{max-height:42vh;overflow:auto;border:1px solid var(--line);border-radius:6px}
 .scrolltable th{position:sticky;top:0;background:#fff}
+.awbwrap{position:relative}
+.awbsuggest{position:absolute;left:0;right:0;top:100%;margin-top:3px;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 20px rgba(17,24,39,.12);z-index:40;max-height:330px;overflow:auto}
+.awbsuggest button{display:flex;align-items:baseline;gap:14px;width:100%;border:0;background:#fff;padding:7px 11px;font-size:12px;text-align:left;cursor:pointer;color:var(--txt)}
+.awbsuggest button:hover,.awbsuggest button.on{background:#eef2ff}
+.awbsuggest .awb{font-weight:600;font-variant-numeric:tabular-nums;min-width:104px}
+.awbsuggest .dir{min-width:48px;color:var(--mut);font-size:11px}
+.awbsuggest .meta{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.awbsuggest .more{padding:6px 11px;font-size:11px;color:var(--mut);border-top:1px solid var(--line)}
 .f.req input,.f.req select{border-left:2px solid var(--brand);border-radius:6px}
 .f.bad input,.f.bad select{border-color:var(--err);background:#fef2f2}
 .span2{grid-column:span 2}
@@ -2732,7 +2740,7 @@ function shDemoItems(){
 
 function shCountText(){
   var n = SH.items.length;
-  return n ? n + " shipment" + (n === 1 ? "" : "s") + " in the Shipment Database. Type an AWB to fill in its details."
+  return n ? n + " shipment" + (n === 1 ? "" : "s") + " in the Shipment Database. Type an AWB, or pick one from the suggestions, to fill in its details."
            : "The Shipment Database is empty. Paste today's manifest there, or enter the details by hand.";
 }
 function shStatus(p, cls, html){
@@ -2751,12 +2759,20 @@ function shRefreshForms(){
    committed (Enter, or leaving the field) and no longer matches the shipment
    that was filled in, those details are cleared: one shipment's data must never
    sit under another shipment's AWB. A shipment of the other direction is not
-   filled in at all, because export and import advices use different tariffs. */
+   filled in at all, because export and import advices use different tariffs.
+
+   From the third digit typed, loaded shipments whose AWB matches are suggested
+   in a list under the field - AWBs that start with the digits first, then those
+   that contain them, so the last few digits of an AWB work too. Picking one,
+   by click or with the arrow keys and Enter, completes the AWB and fills it in
+   exactly as typing it in full would. */
+var AWB_SUGGEST_MIN = 3, AWB_SUGGEST_MAX = 8;
 function wireAwbLookup(mode, recalc){
   var isExp = mode === "export", p = isExp ? "a" : "i", here = isExp ? "Export" : "Import";
   var TIME = isExp ? "t2" : "t1";   /* departure on an export, RCF on an import */
   var awbEl = $(p+"_mawb"), filled = null, wrongKey = null;
   if(!awbEl) return;
+  var sugEl = $(p+"_awbsuggest"), sugKeys = [], sugIndex = -1;
 
   function set(id, v){ var el = $(p+"_"+id); if(el) el.value = (v == null ? "" : v); }
   function clearFilled(){
@@ -2833,9 +2849,81 @@ function wireAwbLookup(mode, recalc){
       : "The Shipment Database is empty. Enter the details below, or paste today's manifest there.");
   }
 
-  awbEl.addEventListener("input", function(){ lookup(false); });
+  function closeSuggest(){
+    sugEl.style.display = "none";
+    sugEl.innerHTML = "";
+    sugKeys = [];
+    sugIndex = -1;
+  }
+  function showSuggest(){
+    var k = awbKey(awbEl.value), starts = [], within = [];
+    if(k.length >= AWB_SUGGEST_MIN){
+      SH.items.forEach(function(x){
+        var at = x.key.indexOf(k);
+        if(at === 0) (x.key === k ? starts.unshift(x) : starts.push(x));
+        else if(at > 0) within.push(x);
+      });
+    }
+    var all = starts.concat(within);
+    /* nothing to offer, or the one match is the AWB already typed in full */
+    if(!all.length || (all.length === 1 && all[0].key === k)){ closeSuggest(); return; }
+    var shown = all.slice(0, AWB_SUGGEST_MAX);
+    sugKeys = shown.map(function(x){ return x.key; });
+    sugIndex = -1;
+    sugEl.innerHTML = shown.map(function(x, i){
+      var dir = shDirection(x), when = dir === "Import" ? x.rcf : (x.dep || x.rcf);
+      var meta = [shMasterName(x.cust), [x.org, x.dst].filter(Boolean).join(" / "), x.fltno, shWhen(when)].filter(Boolean).join("  ·  ");
+      return '<button type="button" data-i="' + i + '"><span class="awb">' + esc(x.awb) + '</span>'
+        + '<span class="dir">' + esc(dir) + '</span><span class="meta">' + esc(meta) + '</span></button>';
+    }).join("")
+      + (all.length > shown.length ? '<div class="more">' + (all.length - shown.length) + ' more. Keep typing to narrow the list.</div>' : '');
+    sugEl.style.display = "block";
+  }
+  function highlight(){
+    var buttons = sugEl.querySelectorAll("button");
+    for(var i=0; i<buttons.length; i++){
+      buttons[i].className = i === sugIndex ? "on" : "";
+      if(i === sugIndex && buttons[i].scrollIntoView) buttons[i].scrollIntoView({ block: "nearest" });
+    }
+  }
+  function pick(i){
+    var key = sugKeys[i], x = SH.items.filter(function(item){ return item.key === key; })[0];
+    closeSuggest();
+    if(!x) return;
+    awbEl.value = x.awb;
+    lookup(true);
+  }
+
+  awbEl.addEventListener("input", function(){ lookup(false); showSuggest(); });
+  awbEl.addEventListener("focus", showSuggest);
+  awbEl.addEventListener("blur", closeSuggest);
   awbEl.addEventListener("change", function(){ lookup(true); });
-  awbEl.addEventListener("keydown", function(ev){ if(ev.key === "Enter"){ ev.preventDefault(); lookup(true); } });
+  awbEl.addEventListener("keydown", function(ev){
+    var open = sugKeys.length > 0;
+    if(ev.key === "ArrowDown" || ev.key === "ArrowUp"){
+      if(!open){ showSuggest(); open = sugKeys.length > 0; }
+      if(!open) return;
+      ev.preventDefault();
+      sugIndex = (sugIndex + (ev.key === "ArrowDown" ? 1 : -1) + sugKeys.length) % sugKeys.length;
+      highlight();
+    } else if(ev.key === "Escape" && open){
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeSuggest();
+    } else if(ev.key === "Enter"){
+      ev.preventDefault();
+      if(open && sugIndex >= 0){ pick(sugIndex); return; }
+      closeSuggest();
+      lookup(true);
+    }
+  });
+  /* mousedown, not click, and no default: the field keeps focus, so its blur
+     cannot close the list before the choice registers */
+  sugEl.addEventListener("mousedown", function(ev){
+    ev.preventDefault();
+    var b = ev.target.closest ? ev.target.closest("button[data-i]") : null;
+    if(b) pick(parseInt(b.getAttribute("data-i"), 10));
+  });
   AWB_LOOKUP[mode] = lookup;
   shStatus(p, "", shCountText());
 }
@@ -3005,7 +3093,8 @@ function buildAdvice(mode){
 
   /* ---- 1. AWB first: typing it fills in the shipment from the Shipment Database ---- */
   h += '<div class="fgrid" style="grid-template-columns:1fr">';
-  h += fld("AWB # (MAWB) *", '<input id="'+p+'_mawb" placeholder="780-30000000" autocomplete="off" class="req" '+INU+'>');
+  h += fld("AWB # (MAWB) *", '<div class="awbwrap"><input id="'+p+'_mawb" placeholder="780-30000000" autocomplete="off" class="req" '+INU+'>'
+     + '<div class="awbsuggest" id="'+p+'_awbsuggest" style="display:none"></div></div>');
   h += '</div>';
   h += '<div class="awbstatus" id="'+p+'_awbstatus"></div>';
 

@@ -284,6 +284,11 @@ print under another party's TRN.
 
 Typing an AWB on an advice fills in its shipment from the Shipment Database.
 
+- **Suggestions.** From the third digit typed, loaded shipments whose AWB matches
+  are listed under the field: AWBs that start with the digits first, then those
+  that contain them, up to eight, each with owner, route, flight and time.
+  Picking one - by click, or with the arrow keys and Enter - completes the AWB and
+  fills it in exactly as typing it in full would. Escape closes the list.
 - **Matching** is on the AWB's digits only, so hyphens and spaces do not matter.
   While the AWB is being typed, a shipment fills in only on an exact match that no
   other loaded AWB extends; on Enter, or on leaving the field, an exact match is

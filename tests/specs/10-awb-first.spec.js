@@ -193,6 +193,62 @@ module.exports = {
       } finally { await app.close(); }
     },
 
+    "typing part of an AWB suggests loaded shipments, and clicking one fills the advice": async (h) => {
+      const third = row("780-30200003", "DWC", "NBO", "ZZ 127", "09/10/2026, 06:40 AM", "", "GEN", "Machinery Parts", "12", "300", h.OTHER_CUSTOMER.name);
+      const { app } = await withManifest(h, [exportRow(h), importRow(h), third]);
+      try {
+        await h.tab(app.page, "Export Advice");
+        await app.page.fill("#a_mawb", "780-302");
+        await app.page.waitForTimeout(150);
+        const shown = await app.page.$$eval("#a_awbsuggest button", (b) => b.map((x) => x.textContent));
+        h.eq(shown.length, 3, "every loaded AWB starting with those digits is suggested");
+        h.contains(shown.join("|"), h.SAMPLE_CUSTOMER.name, "a suggestion shows the AWB owner");
+        h.eq(await val(app.page, "a_cust"), "", "nothing is filled in until one is chosen");
+
+        await app.page.click('#a_awbsuggest button:has-text("780-30200001")');
+        await app.page.waitForTimeout(200);
+        h.eq(await val(app.page, "a_mawb"), "780-30200001", "the AWB is completed");
+        h.eq(await val(app.page, "a_cust"), h.SAMPLE_CUSTOMER.name, "and its shipment filled in");
+        h.eq(await val(app.page, "a_pcs"), "25", "pieces too");
+        h.eq(await app.page.$eval("#a_awbsuggest", (e) => getComputedStyle(e).display), "none", "the list closes");
+
+        await app.page.fill("#a_mawb", "780-302");
+        await app.page.waitForTimeout(150);
+        await app.page.click('#a_awbsuggest button:has-text("780-30200002")');
+        await app.page.waitForTimeout(200);
+        h.contains(await text(app.page, "#a_awbstatus"), "import shipment", "an import picked on the export advice gets the wrong-direction notice");
+        h.eq(await val(app.page, "a_cust"), "", "and the export details are cleared");
+        app.assertNoErrors();
+      } finally { await app.close(); }
+    },
+
+    "suggestions match the end of an AWB, work from the keyboard, and close when done": async (h) => {
+      const { app } = await withManifest(h, [exportRow(h), importRow(h)]);
+      try {
+        await h.tab(app.page, "Export Advice");
+        await app.page.fill("#a_mawb", "0001");
+        await app.page.waitForTimeout(150);
+        const shown = await app.page.$$eval("#a_awbsuggest button", (b) => b.map((x) => x.textContent));
+        h.eq(shown.length, 1, "the last digits of an AWB find it");
+        h.contains(shown[0], "780-30200001", "the right one");
+        await app.page.press("#a_mawb", "ArrowDown");
+        await app.page.press("#a_mawb", "Enter");
+        await app.page.waitForTimeout(200);
+        h.eq(await val(app.page, "a_cust"), h.SAMPLE_CUSTOMER.name, "arrow down and Enter picks it");
+
+        await app.page.fill("#a_mawb", "780-302");
+        await app.page.waitForTimeout(150);
+        h.eq(await app.page.$eval("#a_awbsuggest", (e) => getComputedStyle(e).display), "block", "open while typing");
+        await app.page.press("#a_mawb", "Escape");
+        h.eq(await app.page.$eval("#a_awbsuggest", (e) => getComputedStyle(e).display), "none", "Escape closes it");
+
+        await app.page.fill("#a_mawb", "780-30200001");
+        await app.page.waitForTimeout(150);
+        h.eq(await app.page.$eval("#a_awbsuggest", (e) => getComputedStyle(e).display), "none", "an AWB typed in full closes the list");
+        h.eq(await val(app.page, "a_pcs"), "25", "and fills in without a click");
+      } finally { await app.close(); }
+    },
+
     "an AWB that is not in the database is left for manual entry, and saves": async (h) => {
       const { app } = await withManifest(h, [exportRow(h)]);
       try {

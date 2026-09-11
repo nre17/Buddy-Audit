@@ -25,7 +25,7 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 | `07-security.spec.js` | Invoiced detection, missing-invoice alert, id-based delete under filter, block paste |
 | `08-dashboard-handover.spec.js` | Dashboard KPIs and filters, shift window figures, equipment table |
 | `09-migrations.spec.js` | All three legacy-data backfills, seeded with the old shapes |
-| `10-awb-first.spec.js` | Shipment Database paste and CSV import, column matching, date-order detection and override, the AWB lookup and its guards (prefix, changed AWB, wrong direction), billing party autofill and validation, the saved record and the printed advice |
+| `10-awb-first.spec.js` | Shipment Database paste and CSV import, column matching, date-order detection and override, AWB suggestions (prefix and tail matching, click, keyboard, closing), the AWB lookup and its guards (prefix, changed AWB, wrong direction), billing party autofill and validation, the saved record and the printed advice |
 | `11-customer-database.spec.js` | The Customer Database tab: position, the capped list and search; every customer has a TRN and an address; the billing party list is exactly the database |
 
 Many cases are labelled as regressions. Each one corresponds to a bug that reached

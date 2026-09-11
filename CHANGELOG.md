@@ -11,7 +11,7 @@ The advice tabs now start from the AWB. The day's manifest is pasted into a new
 Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
 company invoiced is chosen separately from the company the AWB is booked under.
 
-Verified by the regression suite (74 cases) and a pixel comparison of every other
+Verified by the regression suite (76 cases) and a pixel comparison of every other
 tab's panel against 1.1.0.
 
 ### Added
@@ -36,6 +36,10 @@ tab's panel against 1.1.0.
   owner, origin, destination, flight number, SHC code, nature of goods, pieces,
   gross weight, and the departure time (export) or RCF time (import). Every field
   stays editable.
+  - Suggests loaded shipments from the third digit typed - AWBs starting with the
+    digits first, then those containing them - showing owner, route, flight and
+    time. Click one, or use the arrow keys and Enter, to complete the AWB and fill
+    it in.
   - Matches on digits, so hyphens and spaces do not matter, and never fills on a
     prefix while typing.
   - Changing the AWB to one that is not loaded clears the details filled in for the
@@ -48,7 +52,7 @@ tab's panel against 1.1.0.
   outside the master. Required to preview, print and save.
 - Migration **M3**: invoices saved before the billing party existed are billed to
   their customer.
-- `tests/specs/10-awb-first.spec.js` (21 cases), `tests/specs/11-customer-database.spec.js`
+- `tests/specs/10-awb-first.spec.js` (23 cases), `tests/specs/11-customer-database.spec.js`
   (3 cases), and a migration case in `09-migrations.spec.js`.
 - `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files, because
   shipment manifests name customers and shipments.

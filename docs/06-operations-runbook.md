@@ -62,8 +62,9 @@ Columns can be in any order; they are matched by their headings. A CSV file work
 too, through **Choose CSV File**. Pasting an updated manifest later replaces the
 shipments it contains and keeps the others.
 
-**On the advice:** type the AWB. The owner, flight, route, time, SHC, goods, pieces
-and weight fill in. Enter anything the manifest did not have, choose the **Billing
+**On the advice:** start typing the AWB. Matching shipments are suggested under the
+field - click one, or type the AWB in full. The owner, flight, route, time, SHC,
+goods, pieces and weight fill in. Enter anything the manifest did not have, choose the **Billing
 Party** at the bottom - or click **Same as AWB owner** - and carry on as before.
 
 > Loaded shipments are **not** part of the daily backup. After a restore, paste the
