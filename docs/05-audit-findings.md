@@ -23,6 +23,7 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-15](#a-15) | P2 | Form-field styling is inlined in 22 places, overriding the CSS that already exists | M |
 | [A-20](#a-20) | **P1** | Every local copy of the app shares one data store, so a demo copy can write into the live register | S (process) + M (code) |
 | [A-21](#a-21) | P2 | Restoring a backup does not run the data migrations until the next reload | S |
+| [A-23](#a-23) | P3 | The storage manual override cannot be used, so an adjusted storage charge is never marked as one | S |
 
 ## Closed
 
@@ -36,6 +37,10 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-18](#a-18) | `dayKey()` was a no-op and the reference expression was duplicated four times | Replaced by `refFor()` / `previewRef()`. A *tidying* fix — the underlying A-02 defect is still open, but now has one place to fix it. |
 | [A-19](#a-19) | Duplicated date formatting and dead CSS | `ymd()` helper introduced; six dead CSS rules removed. |
 | [A-22](#a-22) | No customer master with TRNs or addresses on a counter machine | **Accepted by decision D-11.** The application is a prototype on demo customer data, shown on the Customer Database tab; the real customer master belongs in the ERP. |
+| [A-24](#a-24) | An SHC code not in the list billed as general cargo | Fixed: it bills as special cargo, and several codes follow the class rule (decision D-14). |
+| [A-25](#a-25) | Dates read month-first on a US-English browser | Fixed: every date is shown and typed day-first (decision D-13). |
+| [A-26](#a-26) | Free-hour rules could not be set to zero, and the SHC reference ignored the saved hours | Fixed. |
+| [A-27](#a-27) | The import storage readout counted "since acceptance" | Fixed: it reads "since RCF". |
 
 All closures were verified by the 50-case regression suite plus a pixel-level
 screenshot comparison across all eight tabs, before and after. Rendering is
@@ -443,6 +448,72 @@ and addresses, belongs in the ERP - see `07-erp-handover-spec.md`. Builds from
 
 ---
 
+## A-23 — The storage manual override cannot be used {#a-23}
+
+**P3. Open.**
+
+The import tariff has a "Storage - Manual Override (per day)" line, but it is a
+`kind:"days"` line, which the form skips, and `collectAdvice()` always saves
+`storageOverride: false`. So the "Storage manually adjusted" note on the printed
+advice and the OVR marker in the register can never appear. Staff can still change
+storage by editing the storage line's quantity or rate, but that is not recorded as
+an override. Either remove the line and the flag, or give the storage line an
+override with a required reason, like the payment reason.
+
+---
+
+## A-24 — An SHC code not in the list billed as general cargo {#a-24}
+
+**P1 as found. FIXED.**
+
+`shcClass()` returned `general` for any code it did not recognise, and a manifest
+code outside the list was not put on the form, which kept its GEN default. General
+is the cheapest class, so an unexpected code under-billed without anyone noticing.
+A field with several codes ("PER COL") was unrecognised too, so a perishable
+shipment could bill as general.
+
+**Fix (D-14):** GEN and ELI are general; any perishable code makes a shipment
+perishable; every other code, listed or not, is special. A manifest code outside
+the list is kept on the form and flagged. The Dangerous Goods Inspection applies
+when any code is DGR. The regression suite checks every listed code on both
+advices, and the combined and unknown cases.
+
+---
+
+## A-25 — Dates read month-first on a US-English browser {#a-25}
+
+**P1 as found. FIXED.**
+
+The date and time fields were the browser's own inputs, which follow the browser's
+language, and on a US-English browser read `mm/dd/yyyy`. Printouts, the register
+and exports showed `yyyy-mm-dd`. At a UAE counter, 01/09 entered as a date could be
+taken as 9 January, and storage is billed from those times.
+
+**Fix (D-13):** every date is shown and typed day-first, `dd/mm/yyyy` and
+`dd/mm/yyyy hh:mm`, with a calendar button; an unreadable date turns the field red
+and counts as empty. Stored dates stay ISO, so no filter or calculation changed.
+
+---
+
+## A-26 — Free-hour rules could not be set to zero, and the reference ignored them {#a-26}
+
+**P3 as found. FIXED.**
+
+Saving 0 free hours fell back to the standard 48 or 8, because the value was read
+with `|| default`. The SHC reference under Rates & Data had the hours written into
+its text, so it did not change when the rules did.
+
+---
+
+## A-27 — The import storage readout counted "since acceptance" {#a-27}
+
+**P3 as found. FIXED.**
+
+Import storage runs from RCF to delivery, but the live readout said "Elapsed since
+acceptance" on both advices.
+
+---
+
 ## Recommended order
 
 The housekeeping pass is done. What remains, in order:
@@ -457,7 +528,7 @@ The housekeeping pass is done. What remains, in order:
 5. **Third PR:** A-06 (`$` helper, which also revives the dead Ctrl+S shortcut),
    then A-07 (single charge formula). These remove whole classes of future bug and
    make later refactoring safe.
-6. **Fourth PR:** A-03, A-05, A-08, A-21 - correctness and clarity.
+6. **Fourth PR:** A-03, A-05, A-08, A-21, A-23 - correctness and clarity.
 7. **When restyling:** A-15 (inline field styles). Visual change, own PR.
 8. **Backlog:** A-10, only if tablets are actually required.
 

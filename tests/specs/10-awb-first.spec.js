@@ -592,23 +592,46 @@ module.exports = {
       } finally { await app.close(); }
     },
 
-    "an unknown SHC code is flagged in the preview and not applied": async (h) => {
+    "manifest SHC codes: an unknown code is flagged and bills as special; several codes keep their class": async (h) => {
       const app = await h.openApp();
       try {
         await h.tab(app.page, "Shipment Database");
         await app.page.fill("#sh_paste", h.manifestText(h.MANIFEST_HEADER, [
           row("780-30200071", "DWC", "BAH", "ZZ 160", "09/20/2026, 09:00 AM", "", "XYZ", "Spare Parts", "3", "30", h.SAMPLE_CUSTOMER.name),
+          row("780-30200072", "DWC", "BAH", "ZZ 161", "09/20/2026, 09:00 AM", "", "DGR ELI", "Batteries", "4", "40", h.SAMPLE_CUSTOMER.name),
+          row("780-30200073", "DWC", "BAH", "ZZ 162", "09/20/2026, 09:00 AM", "", "PER COL", "Chilled Fish", "5", "50", h.SAMPLE_CUSTOMER.name),
         ]));
         await app.page.click("#sh_preview");
         await app.page.waitForTimeout(150);
-        h.contains(await text(app.page, "#sh_result"), "SHC XYZ is not a known code", "flagged in the preview");
+        const preview = await text(app.page, "#sh_result");
+        h.contains(preview, "SHC XYZ is not a known code; it bills as special cargo", "flagged in the preview");
+        h.assert(preview.indexOf("SHC DGR ELI") < 0 && preview.indexOf("SHC PER COL") < 0, "listed codes together are not flagged");
         await app.page.click("#sh_import");
         await app.page.waitForTimeout(250);
         await h.tab(app.page, "Export Advice");
+        const handling = async () => {
+          const q = [];
+          for (const k of ["gen", "spc", "per"]) q.push(k + "=" + Number((await h.chargeRow(app.page, "ex_handling_" + k)).qty));
+          return q.join(" ");
+        };
+
         await app.page.fill("#a_mawb", "780-30200071");
         await app.page.waitForTimeout(200);
-        h.eq(await val(app.page, "a_shc"), "GEN", "an unknown code is not forced onto the form");
-        h.contains(await text(app.page, "#a_awbstatus"), "not a known code", "and the form says so");
+        h.eq(await val(app.page, "a_shc"), "XYZ", "the code is kept on the form, not replaced by GEN");
+        h.contains(await text(app.page, "#a_awbstatus"), "not a known code, so it bills as special cargo", "and the form says how it bills");
+        h.eq(await handling(), "gen=0 spc=30 per=0", "billed as special cargo");
+
+        await app.page.fill("#a_mawb", "780-30200072");
+        await app.page.waitForTimeout(200);
+        h.eq(await val(app.page, "a_shc"), "DGR ELI", "several codes are kept together");
+        h.eq(await handling(), "gen=0 spc=40 per=0", "DGR with ELI is special cargo");
+        h.eqMoney((await h.chargeRow(app.page, "ex_dgr")).charge, 350, "and DGR among the codes raises the DG inspection");
+
+        await app.page.fill("#a_mawb", "780-30200073");
+        await app.page.waitForTimeout(200);
+        h.eq(await handling(), "gen=0 spc=0 per=50", "a perishable code among several makes it perishable");
+        h.eq(await app.page.$$eval("#a_shc option[data-manifest]", (o) => o.map((x) => x.value).join()), "PER COL",
+          "codes added for an earlier AWB are removed when the AWB changes");
       } finally { await app.close(); }
     },
   },

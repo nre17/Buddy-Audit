@@ -41,7 +41,13 @@ Currency is AED throughout. VAT is applied per charge line, not globally.
 | Free storage period | hours, by cargo class | general 48, special 48, perishable 8 |
 
 Cargo class is **derived** from the SHC code, and drives the handling rate, the
-storage rate and the free storage window. It is not entered by staff.
+storage rate and the free storage window. It is not entered by staff. GEN and ELI
+are general cargo; any perishable code (PER, PEP, PEF, PEM, PES) is perishable;
+every other code, including one not in the list, is special. A shipment with
+several codes is perishable if any code is, and general only if every code is.
+
+**Dates** are shown and entered day-first (`dd/mm/yyyy`, 24-hour times) and held
+in ISO 8601.
 
 > **Master data will need a cleansing pass.** The customer master originates as
 > a spreadsheet maintained by hand and has never been validated on import. Assume

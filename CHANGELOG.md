@@ -5,14 +5,13 @@ Newest first.
 
 ---
 
-## [1.2.0] — Unreleased — Shipment Database, AWB-first advices, billing party
+## [1.2.0] — 2026-09-11 — Shipment Database, AWB-first advices, billing party
 
 The advice tabs now start from the AWB. The day's manifest is pasted into a new
 Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
 company invoiced is chosen separately from the company the AWB is booked under.
 
-Verified by the regression suite (84 cases) and a pixel comparison of every other
-tab's panel against 1.1.0.
+Verified by the regression suite (92 cases).
 
 ### Added
 
@@ -100,7 +99,28 @@ tab's panel against 1.1.0.
   counter rollout; the real customer master belongs in the ERP. Recorded as audit
   A-22, accepted.
 
+### Fixed — final audit
+
+- **Dates are day-first, the UAE way.** Every date is shown and typed as
+  `dd/mm/yyyy`, and `dd/mm/yyyy hh:mm` for times: the advice time fields, the
+  register and dashboard filters, the handover and lying list, the dialogs, the
+  printed advice, the register and the Excel and CSV exports. The browser's own
+  date inputs, which read month-first on a US-English browser, are replaced by
+  day-first fields with a calendar button; a date that cannot be read turns the
+  field red. Stored dates stay ISO and references stay `YYYY-MM-DD/NN`. (A-25, D-13)
+- **Cargo class follows the tariff for every SHC code.** GEN and ELI are general;
+  any perishable code is perishable; every other code is special, including one
+  not in the list, which used to bill as general. A manifest with several codes on
+  one shipment ("PER COL", "DGR ELI") keeps them on the form and bills by the same
+  rule, and DGR among them raises the Dangerous Goods Inspection. (A-24, D-14)
+- **Free-hour rules can be set to zero**, and the SHC reference under Rates & Data
+  shows the hours in force instead of fixed text. (A-26)
+- **The import storage readout counts from RCF**, not "acceptance". (A-27)
+
 ### Known, still open
+
+- **A-23:** the import tariff's storage manual override line cannot be used, so an
+  adjusted storage charge is never marked as one.
 
 - **A-21** *new.* Restore from Backup does not run the data migrations until the
   next reload. Printing is covered by `billingOf()`.

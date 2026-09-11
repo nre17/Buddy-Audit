@@ -70,6 +70,11 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .awbsuggest .more{padding:6px 11px;font-size:11px;color:var(--mut);border-top:1px solid var(--line)}
 .f.req input,.f.req select{border-left:2px solid var(--brand);border-radius:6px}
 .f.bad input,.f.bad select{border-color:var(--err);background:#fef2f2}
+/* day-first date fields: an unreadable date, and the calendar button. !important
+   because the fields carry inline styles (audit A-15) */
+input.dtbad{border-color:var(--err)!important;background:#fef2f2!important}
+.dtpick{position:absolute;right:3px;bottom:3px;width:26px;height:24px;border:0;padding:0;background:transparent;cursor:pointer;font-size:13px;line-height:24px;color:var(--mut)}
+.dtpick:hover{color:var(--brand)}
 .span2{grid-column:span 2}
 
 /* ===== Charge table ===== */
@@ -2347,8 +2352,105 @@ function pad(n){ n=Math.round(n); return n<10?"0"+n:""+n; }
 function ymd(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
 function nowLocalDT(){ var d=new Date(); return ymd(d)+"T"+pad(d.getHours())+":"+pad(d.getMinutes()); }
 function money(n){ if(typeof n!=="number" || isNaN(n)) return "0.00"; return n.toFixed(2); }
-function fmtD(iso){ if(!iso) return ""; return ymd(new Date(iso)); }
-function fmtDT(iso){ if(!iso) return ""; var d=new Date(iso); return fmtD(iso)+" "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+/* Dates are stored ISO - yyyy-mm-dd, and yyyy-mm-ddThh:mm for times - which sorts
+   and compares as text. They are shown the UAE way, day first: dd/mm/yyyy (hh:mm). */
+function fmtD(iso){
+  if(!iso) return "";
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);   /* a stored day, read as that local day, not UTC midnight */
+  var d = m ? new Date(+m[1], m[2]-1, +m[3]) : new Date(iso);
+  return isNaN(d.getTime()) ? "" : pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear();
+}
+function fmtDT(iso){ if(!iso) return ""; var d=new Date(iso); return isNaN(d.getTime()) ? "" : fmtD(ymd(d))+" "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+
+/* ---------- day-first date fields ----------
+   The browser's own date and time inputs follow the browser's language, so on a
+   US-English browser they read month-first whatever the page asks. Every date and
+   datetime-local input is therefore turned into a text field, shown and typed
+   day-first - dd/mm/yyyy, or dd/mm/yyyy hh:mm - as soon as it is on the page
+   (uaeDateFields, run by a MutationObserver set up before boot).
+
+   The field's .value still reads and writes the ISO form the rest of the code
+   stores, compares and calculates with ("2026-09-11", "2026-09-11T14:30"), so no
+   other code changes. A date that cannot be read turns the field red and reads as
+   empty. The calendar button opens the browser's picker, kept as a hidden input. */
+var NATIVE_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+
+/** Typed text as ISO: "" when empty, null when it is not a real date (and time). */
+function dtISO(text, withTime){
+  var s = String(text == null ? "" : text).trim(), m, y, mo, d, hh, mi;
+  if(!s) return "";
+  if((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?$/.exec(s))){
+    y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4]; mi = m[5];            /* ISO, as the code writes it */
+  } else if((m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})(?:[ ,T]+(\d{1,2}):(\d{2}))?$/.exec(s))){
+    d = +m[1]; mo = +m[2]; y = +m[3]; hh = m[4]; mi = m[5];            /* day first, as staff type it */
+  } else return null;
+  var t = new Date(y, mo-1, d);
+  if(t.getFullYear() !== y || t.getMonth() !== mo-1 || t.getDate() !== d) return null;
+  var out = y+"-"+pad(mo)+"-"+pad(d);
+  if(!withTime) return out;
+  if(hh == null || +hh > 23 || +mi > 59) return null;
+  return out+"T"+pad(+hh)+":"+mi;
+}
+function dtShow(v, withTime){
+  var iso = dtISO(v, withTime);
+  if(!iso) return v == null ? "" : String(v);
+  return iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(0,4) + (withTime ? " "+iso.slice(11,16) : "");
+}
+function dtMark(el){
+  var raw = NATIVE_VALUE.get.call(el), bad = raw.trim() !== "" && !dtISO(raw, el.dataset.dt === "datetime");
+  el.classList[bad ? "add" : "remove"]("dtbad");
+  el.title = bad ? "Enter the date as " + el.placeholder : "";
+}
+function uaeDateField(el){
+  var withTime = el.type === "datetime-local", iso = el.value;
+  var picker = document.createElement("input");
+  picker.type = el.type; picker.className = "dtnative"; picker.tabIndex = -1;
+  picker.setAttribute("aria-hidden", "true");
+  picker.style.cssText = "position:absolute;right:0;bottom:0;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none";
+  var btn = document.createElement("button");
+  btn.type = "button"; btn.className = "dtpick"; btn.tabIndex = -1;
+  btn.title = "Pick from the calendar"; btn.innerHTML = "&#128197;";
+
+  el.type = "text";
+  el.dataset.dt = withTime ? "datetime" : "date";
+  el.placeholder = withTime ? "dd/mm/yyyy hh:mm" : "dd/mm/yyyy";
+  el.autocomplete = "off";
+  el.style.paddingRight = "30px";
+  Object.defineProperty(el, "value", {
+    configurable: true,
+    get: function(){ return dtISO(NATIVE_VALUE.get.call(el), withTime) || ""; },
+    set: function(v){ NATIVE_VALUE.set.call(el, dtShow(v, withTime)); dtMark(el); }
+  });
+  el.value = iso;
+  el.addEventListener("change", function(){
+    var v = dtISO(NATIVE_VALUE.get.call(el), withTime);
+    if(v) NATIVE_VALUE.set.call(el, dtShow(v, withTime));   /* tidy "1/9/2026 8:00" to 01/09/2026 08:00 */
+    dtMark(el);
+  });
+
+  var host = el.parentNode;
+  if(host){
+    if(getComputedStyle(host).position === "static") host.style.position = "relative";
+    host.insertBefore(picker, el.nextSibling);
+    host.insertBefore(btn, picker);
+  }
+  btn.onclick = function(){
+    if(el.disabled || el.readOnly) return;
+    picker.value = el.value;
+    try{ picker.showPicker(); }catch(e){ picker.focus(); }
+  };
+  picker.addEventListener("change", function(){
+    if(!picker.value) return;
+    el.value = picker.value;
+    ["input", "change"].forEach(function(type){
+      var ev = document.createEvent("Event"); ev.initEvent(type, true, true); el.dispatchEvent(ev);
+    });
+  });
+}
+function uaeDateFields(){
+  var list = document.querySelectorAll('input[type="date"]:not(.dtnative), input[type="datetime-local"]:not(.dtnative)');
+  for(var i = 0; i < list.length; i++) uaeDateField(list[i]);
+}
 function toast(msg, kind){ kind = kind || "info"; var t=$("toast"); if(!t) return; t.textContent=msg; t.className="toast "+kind; t.style.display="block"; clearTimeout(toast._t); toast._t=setTimeout(function(){ t.style.display="none"; }, 2600); }
 function stamp(){ var d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes()); }
 
@@ -2357,13 +2459,31 @@ function stamp(){ var d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+p
    the sequence keeps climbing instead of restarting at 01 each morning. The
    format promises a daily number that the code does not actually produce.
    These two functions are the only place that has to change to fix it. */
-function refFor(n){ return fmtD(new Date()) + "/" + pad(n); }
+function refFor(n){ return ymd(new Date()) + "/" + pad(n); }   /* year-first, so references sort in order */
 
 /** The reference the next saved invoice of this mode would receive. */
 function previewRef(mode){ return refFor((DB.seq[mode]||0) + 1); }
 
-function shcLabel(code){ if(!code) return ""; var s=CFG.shcCodes.filter(function(x){ return x.c===code; })[0]; return s?s.d:code; }
-function shcClass(code){ if(!code) return "general"; var s=CFG.shcCodes.filter(function(x){ return x.c===code; })[0]; return s?s.k:"general"; }
+/* Cargo class from the SHC field, which may carry several codes ("PER COL").
+   GEN and ELI are general cargo. A perishable code (PER, PEP, PEF, PEM, PES)
+   makes the shipment perishable. Any other code - including one not in
+   CFG.shcCodes - makes it special cargo, never silently general. No code at all
+   is general. */
+function shcTokens(code){ return String(code || "").toUpperCase().split(/[^A-Z]+/).filter(function(t){ return t; }); }
+function shcEntry(t){ return CFG.shcCodes.filter(function(x){ return x.c===t; })[0]; }
+function shcLabel(code){ return shcTokens(code).map(function(t){ var s=shcEntry(t); return s ? s.d : t+" - not in the SHC list"; }).join(", "); }
+function shcClass(code){
+  var ks = shcTokens(code).map(function(t){ var s=shcEntry(t); return s ? s.k : "special"; });
+  if(!ks.length) return "general";
+  if(ks.indexOf("perishable") >= 0) return "perishable";
+  return ks.every(function(k){ return k==="general"; }) ? "general" : "special";
+}
+function shcHas(code, c){ return shcTokens(code).indexOf(c) >= 0; }
+/** The listed codes of a class, e.g. "GEN and ELI". */
+function shcCodesOf(k){
+  var c = CFG.shcCodes.filter(function(x){ return x.k===k; }).map(function(x){ return x.c; });
+  return c.length > 1 ? c.slice(0, -1).join(", ")+" and "+c[c.length-1] : c.join("");
+}
 function calcStorageDays(t1, t2, cls){
   if(!t1 || !t2) return 0;
   var d1 = new Date(t1), d2 = new Date(t2);
@@ -2509,7 +2629,7 @@ function shMasterName(name){
   return String(name).trim();
 }
 function shInMaster(name){ return !!resolveCustomer(shMasterName(name)); }
-function shcKnown(code){ return CFG.shcCodes.some(function(x){ return x.c === code; }); }
+function shcKnown(code){ var ts = shcTokens(code); return ts.length > 0 && ts.every(function(t){ return !!shcEntry(t); }); }
 
 /** "2026-09-10T02:15" as "10 Sep 2026, 02:15" - written out, so a day/month
     mix-up is visible at a glance. */
@@ -2687,7 +2807,7 @@ function shParseManifest(text, orderOverride){
     var r = x.r, awb = cell(r, "awb").toUpperCase(), key = awbKey(awb), warn = [];
     if(key.length < 8){ skipped++; return; }
     var shc = cell(r, "shc").toUpperCase();
-    if(shc && !shcKnown(shc)) warn.push("SHC " + shc + " is not a known code");
+    if(shc && !shcKnown(shc)) warn.push("SHC " + shc + " is not a known code; it bills as special cargo");
     var dep = shDateValue(x.dp, order), rcf = shDateValue(x.rp, order);
     if(cell(r, "dep") && !dep) warn.push("departure time not readable");
     if(cell(r, "rcf") && !rcf) warn.push("RCF time not readable");
@@ -2797,6 +2917,24 @@ function wireAwbLookup(mode, recalc){
   var sugEl = $(p+"_awbsuggest"), sugKeys = [], sugIndex = -1;
 
   function set(id, v){ var el = $(p+"_"+id); if(el) el.value = (v == null ? "" : v); }
+  /* The SHC list holds the single listed codes. A manifest code outside it -
+     several codes together, or one not in the list - is added for this shipment,
+     so it bills by its own class instead of silently as the form's GEN. */
+  function setShc(v){
+    var el = $(p+"_shc"), has = false;
+    if(!el) return;
+    for(var i = 0; i < el.options.length; i++) if(el.options[i].value === v) has = true;
+    if(!has){
+      var o = document.createElement("option");
+      o.value = v; o.textContent = v; o.setAttribute("data-manifest", "1");
+      el.appendChild(o);
+    }
+    el.value = v;
+  }
+  function dropManifestShc(){
+    var el = $(p+"_shc");
+    if(el) Array.prototype.slice.call(el.querySelectorAll("option[data-manifest]")).forEach(function(o){ el.removeChild(o); });
+  }
   function markAwb(blocked){
     var f = awbEl.closest ? awbEl.closest(".f") : null;
     if(f) f.classList[blocked ? "add" : "remove"]("bad");
@@ -2807,7 +2945,7 @@ function wireAwbLookup(mode, recalc){
   }
   function clearFilled(){
     set("cust", ""); set("org", isExp ? "DWC" : ""); set("dst", isExp ? "" : "DWC");
-    set("fltno", ""); set(TIME, nowLocalDT()); set("shc", "GEN"); set("nog", "");
+    set("fltno", ""); set(TIME, nowLocalDT()); dropManifestShc(); set("shc", "GEN"); set("nog", "");
     set("pcs", ""); set("wt", "");
     filled = null;
   }
@@ -2822,7 +2960,7 @@ function wireAwbLookup(mode, recalc){
        entered - never left at the form's default of now, which storage charges
        would then be calculated from */
     set(TIME, when || "");
-    if(x.shc && shcKnown(x.shc)) set("shc", x.shc);
+    if(x.shc) setShc(x.shc);
     set("nog", x.nog); set("pcs", x.pcs); set("wt", x.wt);
     filled = x.key;
     recalc();
@@ -2830,7 +2968,7 @@ function wireAwbLookup(mode, recalc){
     var notes = [];
     if(x.cust && !shInMaster(x.cust)) notes.push("the AWB owner is not in the customer master");
     if(x.wt == null) notes.push("gross weight is not on the manifest, enter it below");
-    if(x.shc && !shcKnown(x.shc)) notes.push("SHC " + esc(x.shc) + " is not a known code, choose one below");
+    if(x.shc && !shcKnown(x.shc)) notes.push("SHC " + esc(x.shc) + " is not a known code, so it bills as special cargo. Choose another below if that is wrong");
     if(!when) notes.push((isExp ? "departure" : "RCF") + " time is not on the manifest, enter it below");
     shStatus(p, notes.length ? "warn" : "ok",
       "Shipment found" + (x.fltno ? " &middot; " + esc(x.fltno) : "")
@@ -3210,7 +3348,7 @@ function buildAdvice(mode){
       rows += '<tr class="g"><td colspan="8" style="padding:5px 8px;font-weight:700;font-size:11px;color:var(--mut);background:var(--line2);border-radius:3px">'+esc(l.d)+'</td></tr>';
       if(l.g.indexOf("B. Storage")===0){
         /* live elapsed-time / chargeable-days readout, filled in by applyAutoQty() */
-        rows += '<tr><td colspan="8" style="padding:2px 8px 6px"><span id="'+(isExp?"a":"i")+'_storageinfo" style="font-size:10.5px;color:var(--mut)">Elapsed since acceptance: – &nbsp;|&nbsp; Free period: – &nbsp;|&nbsp; Chargeable: – day(s)</span></td></tr>';
+        rows += '<tr><td colspan="8" style="padding:2px 8px 6px"><span id="'+(isExp?"a":"i")+'_storageinfo" style="font-size:10.5px;color:var(--mut)">'+(isExp?"Elapsed since acceptance":"Elapsed since RCF")+': – &nbsp;|&nbsp; Free period: – &nbsp;|&nbsp; Chargeable: – day(s)</span></td></tr>';
       }
       return;
     }
@@ -3421,7 +3559,7 @@ function buildAdvice(mode){
       } else if(l.kind==="storage"){
         if(qtyEl) qtyEl.value = (l.cls === cls) ? (wt||0) * days : 0;
       } else if(l.role==="dgcond"){
-        if(qtyEl) qtyEl.value = (shcVal==="DGR" && !dgRejected) ? 1 : 0;
+        if(qtyEl) qtyEl.value = (shcHas(shcVal, "DGR") && !dgRejected) ? 1 : 0;
       } else if(l.role==="lateaccept"){
         if(qtyEl) qtyEl.value = (gapHours > 0 && gapHours <= 5) ? (wt||0) : 0;
       } else if(l.role==="hawb"){
@@ -3438,10 +3576,11 @@ function buildAdvice(mode){
     if(storageInfoEl){
       var freeH = (CFG.freeHours && CFG.freeHours[cls] != null) ? CFG.freeHours[cls] : 48;
       var clsLabel = cls.charAt(0).toUpperCase() + cls.slice(1);
+      var elapsed = isExp ? "Elapsed since acceptance" : "Elapsed since RCF";
       if(gapHours < 0){
-        storageInfoEl.textContent = "Elapsed since acceptance: – | Free period ("+clsLabel+"): "+freeH+" hrs | Chargeable: – day(s)";
+        storageInfoEl.textContent = elapsed+": – | Free period ("+clsLabel+"): "+freeH+" hrs | Chargeable: – day(s)";
       } else {
-        storageInfoEl.textContent = "Elapsed since acceptance: "+gapHours.toFixed(1)+" hrs | Free period ("+clsLabel+"): "+freeH+" hrs | Chargeable: "+days+" day(s)";
+        storageInfoEl.textContent = elapsed+": "+gapHours.toFixed(1)+" hrs | Free period ("+clsLabel+"): "+freeH+" hrs | Chargeable: "+days+" day(s)";
       }
     }
     recalcAll(isExp?"a":"i");
@@ -3700,7 +3839,7 @@ function collectAdvice(mode){
   return {
     mode: isExp ? "Export" : "Import",
     ref: $(p+"_ref") ? $(p+"_ref").value : previewRef(mode),
-    date: fmtD(new Date()),
+    date: ymd(new Date()),
     ts: new Date().toISOString(),
     cust: cust,             /* the AWB owner - Register, Dashboard and Handover report on this */
     cust_trn: trn,
@@ -4570,6 +4709,23 @@ var IMPORT_OPTIONAL = [
    12. RATES & DATA
    ============================================================ */
 
+/* the SHC reference under Rates & Data, rebuilt whenever the free-hour rules are saved */
+function shcReference(){
+  var h = '<p class="hint" style="margin-top:0">The SHC code on the advice sets the billing class and the free storage window. '
+     + shcCodesOf("general")+' bill as general cargo, '+CFG.freeHours.general+' hrs free. '
+     + 'Perishables ('+shcCodesOf("perishable")+') bill as perishable cargo, '+CFG.freeHours.perishable+' hrs free. '
+     + 'Every other code, including one not in this list, bills as special cargo, '+CFG.freeHours.special+' hrs free. '
+     + 'Where a shipment carries several codes, any perishable code makes it perishable, and any code other than '+shcCodesOf("general")+' makes it special.</p>'
+     + '<table class="reg"><thead><tr><th>Code</th><th>Description</th><th>Bills As</th><th class="r">Free Storage</th></tr></thead><tbody>';
+  CFG.shcCodes.forEach(function(s){
+    var cls = s.k==="general" ? "General Cargo" : (s.k==="perishable" ? "Perishable" : "Special Cargo");
+    var fr  = CFG.freeHours[s.k] + " hrs";
+    h += '<tr><td><b>'+s.c+'</b></td><td>'+esc(s.d)+'</td><td>'+cls+'</td><td class="r">'
+       + (s.k==="perishable" ? '<b style="color:var(--err)">'+fr+'</b>' : fr) + '</td></tr>';
+  });
+  return h + '</tbody></table>';
+}
+
 function buildAdmin(){
   var h = '<div class="grid" style="grid-template-columns:1fr">';
 
@@ -4584,17 +4740,7 @@ function buildAdmin(){
      + fld("", '<button class="btn pri" id="saveFH" style="margin-top:16px">Save Rules</button>')
      + '</div><p class="hint">Export: measured from Acceptance (RCS) to Departure. Import: measured from RCF to Delivery. Any part of a 24-hour period past the free window counts as one chargeable day.</p></div></div>';
 
-  h += '<div class="panel"><h3>Special Handling Codes &mdash; Reference</h3><div class="body">'
-     + '<p class="hint" style="margin-top:0">The SHC code on the advice sets the billing class and the free storage window. '
-     + 'Perishables (PER, PEP, PEF, PEM, PES) start charging after 8 hrs; all other cargo incl. AVI, GEN and DGR after 48 hrs.</p>'
-     + '<table class="reg"><thead><tr><th>Code</th><th>Description</th><th>Bills As</th><th class="r">Free Storage</th></tr></thead><tbody>';
-  CFG.shcCodes.forEach(function(s){
-    var cls = s.k==="general" ? "General Cargo" : (s.k==="perishable" ? "Perishable" : "Special Cargo");
-    var fr  = CFG.freeHours[s.k] + " hrs";
-    h += '<tr><td><b>'+s.c+'</b></td><td>'+esc(s.d)+'</td><td>'+cls+'</td><td class="r">'
-       + (s.k==="perishable" ? '<b style="color:var(--err)">'+fr+'</b>' : fr) + '</td></tr>';
-  });
-  h += '</tbody></table></div></div>';
+  h += '<div class="panel"><h3>Special Handling Codes &mdash; Reference</h3><div class="body" id="shcref">'+shcReference()+'</div></div>';
 
   h += '<div class="panel"><h3>Company Logo</h3><div class="body">'
      + '<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">'
@@ -4645,10 +4791,13 @@ function buildAdmin(){
   $("#p-admin").innerHTML = h;
 
   $("#saveFH").onclick = function(){
-    CFG.freeHours.general = num($("#fh_gen").value)||48;
+    /* an empty or unreadable box keeps the standard hours; 0 is a valid rule */
+    var hours = function(id, standard){ var v = $(id).value.trim(); return v === "" || isNaN(+v) || +v < 0 ? standard : +v; };
+    CFG.freeHours.general = hours("#fh_gen", 48);
     CFG.freeHours.special = CFG.freeHours.general;
-    CFG.freeHours.perishable = num($("#fh_per").value)||8;
+    CFG.freeHours.perishable = hours("#fh_per", 8);
     DB.freeHours = {general:CFG.freeHours.general, perishable:CFG.freeHours.perishable};
+    $("#shcref").innerHTML = shcReference();
     save(); toast("Storage rules saved","ok");
   };
   $("#btnLogo").onclick = function(){ $("#logoFile").click(); };
@@ -5873,7 +6022,10 @@ document.addEventListener("keydown", function(ev){
 });
 
 load();
+/* day-first date fields, for every date input any builder puts on the page */
+new MutationObserver(uaeDateFields).observe(document.body, {childList:true, subtree:true});
 boot();
+uaeDateFields();
 
 
 

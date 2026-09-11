@@ -40,16 +40,30 @@ flag is the `vat` property on each line, taken from the rate sheet. Most lines a
 ## 2. Cargo class
 
 The SHC code drives the handling rate, the storage rate and the free storage
-window. `shcClass()` maps the code via `CFG.shcCodes`; anything unrecognised or
-blank falls back to **general**.
+window. `shcClass()` applies one rule:
 
-| Class | SHC codes | Free storage |
-|---|---|---|
-| **general** | GEN, ELI | 48 h |
-| **perishable** | PER, PEP, PEF, PEM, PES | **8 h** |
-| **special** | AVI, PIL, COL, VAL, HUM, DGR, COU, MUW, SWP, VUN | 48 h |
+- **General** cargo is GEN and ELI, and only those.
+- **Perishable** cargo is any perishable code: PER, PEP, PEF, PEM, PES.
+- **Special** cargo is every other code, including a code that is not in the
+  list. Such a code is flagged for staff to check, but it bills as special, never
+  silently as general.
+- A field carrying **several codes** ("PER COL", "DGR ELI") is perishable if any
+  code is perishable, general only if every code is GEN or ELI, and special
+  otherwise. The Dangerous Goods Inspection applies when any of the codes is DGR.
+- A shipment with no code at all is general.
 
-Free hours are configurable per class in the Rates & Data tab (`DB.freeHours`).
+| Class | SHC codes | Free storage | Handling and storage lines |
+|---|---|---|---|
+| **general** | GEN, ELI | 48 h | General Cargo |
+| **perishable** | PER, PEP, PEF, PEM, PES | **8 h** | Perishable Cargo |
+| **special** | AVI, PIL, COL, VAL, HUM, DGR, COU, MUW, SWP, VUN, and any other code | 48 h | Special Cargo |
+
+Exactly one handling line and one storage line apply to an advice: the pair for
+its class. The regression suite checks every listed code on both advices.
+
+Free hours are configurable in the Rates & Data tab (`DB.freeHours`): one value
+for general and special cargo, one for perishable cargo. Zero is allowed. The SHC
+reference under it always shows the hours in force.
 
 ---
 
@@ -307,7 +321,7 @@ Typing an AWB on an advice fills in its shipment from the Shipment Database.
   own timestamp - acceptance on an export, delivery on an import - is never
   touched. A value missing from the manifest - including the departure or RCF time,
   which is never defaulted to the current time - is left blank to be entered, and an
-  SHC code the application does not know is not applied. A sheet with no gross
+  SHC code the application does not know is kept on the advice and bills as special cargo (section 2). A sheet with no gross
   weights at all, or no weight column, is flagged in the preview before importing.
   Gross weight is read from its usual headings (Gross Weight, Gross Wt, GW,
   Weight, KGS); a chargeable or volume weight column is never read as gross
@@ -334,3 +348,23 @@ with every date written out in words:
   tie falls back to the browser's own date format.
 - The preview marks anything short of certain, and staff can set the order before
   importing.
+
+---
+
+## 10. Dates
+
+- Every date in the application is **shown and typed day-first**, the UAE way:
+  `dd/mm/yyyy`, and `dd/mm/yyyy hh:mm` (24-hour) where a time is needed. This holds
+  whatever language the browser is set to: the browser's own date inputs, which
+  follow that language and read month-first on a US-English browser, are not used.
+- Each date field has a calendar button that opens the browser's date picker.
+- A date that cannot be read, such as 31/02/2026 or a time field without a time,
+  turns the field red and counts as empty, so a required date stops the save.
+- Printed advices, the Invoice Register, the handover report and the Excel and CSV
+  exports all show dates day-first.
+- Dates are **stored** in ISO form (`yyyy-mm-dd`, `yyyy-mm-ddThh:mm`), so filters
+  and storage calculations are unaffected. Invoice references keep the year-first
+  date, `YYYY-MM-DD/NN`, so they sort in order.
+- A CSV export opened in Excel set to a month-first (US) region may read a
+  day-first date such as 01/09/2026 as 9 January. The Excel export writes dates as
+  text and is not affected.

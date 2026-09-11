@@ -175,5 +175,74 @@ module.exports = {
         h.notContains(text, "Free Storage Period", "a zero-charge line must not print");
       } finally { await app.close(); }
     },
+
+    "every SHC code bills handling and storage at its own cargo class, on both advices": async (h) => {
+      // 108 h elapsed at 500 kg: general and special cargo get 48 h free (3 days), perishable 8 h (5 days)
+      const LINES = { general: "gen", special: "spc", perishable: "per" };
+      const label = { general: "General", special: "Special", perishable: "Perishable" };
+      for (const [mode, p, pre] of [["export", "a", "ex"], ["import", "i", "im"]]) {
+        const app = await h.openApp();
+        try {
+          await h.fillAdvice(app.page, mode, { wt: 500, t1: "2026-09-01T08:00", t2: "2026-09-05T20:00" });
+          const codes = await app.page.evaluate(() => CFG.shcCodes.map((s) => [s.c, s.k]));
+          h.eq(codes.filter(([, k]) => k === "general").map(([c]) => c).join(), "GEN,ELI", "only GEN and ELI are general");
+          h.eq(codes.filter(([, k]) => k === "perishable").map(([c]) => c).join(), "PER,PEP,PEF,PEM,PES", "the perishable codes");
+          for (const [code, cls] of codes) {
+            await app.page.selectOption("#" + p + "_shc", code);
+            await app.page.waitForTimeout(100);
+            const days = cls === "perishable" ? 5 : 3;
+            for (const [k, suffix] of Object.entries(LINES)) {
+              const on = k === cls;
+              h.eq(Number((await h.chargeRow(app.page, pre + "_handling_" + suffix)).qty), on ? 500 : 0,
+                mode + " " + code + ": " + k + " handling");
+              h.eq(Number((await h.chargeRow(app.page, pre + "_stor_" + suffix)).qty), on ? 500 * days : 0,
+                mode + " " + code + ": " + k + " storage");
+            }
+            const info = await app.page.$eval("#" + p + "_storageinfo", (e) => e.textContent);
+            h.contains(info, "Free period (" + label[cls] + "): " + (cls === "perishable" ? 8 : 48) + " hrs", mode + " " + code + ": free period");
+            h.contains(info, days + " day(s)", mode + " " + code + ": chargeable days");
+            h.contains(info, mode === "export" ? "Elapsed since acceptance" : "Elapsed since RCF", mode + ": what the time is counted from");
+          }
+        } finally { await app.close(); }
+      }
+    },
+
+    "several SHC codes, or a code not in the list, follow the cargo class rule": async (h) => {
+      const app = await h.openApp();
+      try {
+        const got = await app.page.evaluate(() =>
+          ["GEN", "ELI", "ELI GEN", "PER", "PER COL", "COL,PEM", "AVI", "ELI DGR", "XYZ", "GEM", ""]
+            .map((c) => c + "=" + shcClass(c)).join(" | "));
+        h.eq(got, "GEN=general | ELI=general | ELI GEN=general | PER=perishable | PER COL=perishable | COL,PEM=perishable"
+          + " | AVI=special | ELI DGR=special | XYZ=special | GEM=special | =general", "class by rule");
+        h.eq(await app.page.evaluate(() => [shcHas("ELI DGR", "DGR"), shcHas("DGRX", "DGR")].join()), "true,false",
+          "DGR is found among several codes, and only as a whole code");
+      } finally { await app.close(); }
+    },
+
+    "free storage hours can be changed, to zero too, and the SHC reference follows": async (h) => {
+      const app = await h.openApp();
+      try {
+        await h.tab(app.page, "Rates");
+        await app.page.fill("#fh_gen", "24");
+        await app.page.fill("#fh_per", "0");
+        await app.page.click("#saveFH");
+        await app.page.waitForTimeout(200);
+        const hours = await app.page.evaluate(() =>
+          [CFG.freeHours.general, CFG.freeHours.special, CFG.freeHours.perishable, DB.freeHours.perishable].join());
+        h.eq(hours, "24,24,0,0", "general and special 24 h, perishable 0 h, saved");
+        const ref = await app.page.$eval("#shcref", (e) => e.textContent);
+        h.contains(ref, "GEN and ELI bill as general cargo, 24 hrs free", "the reference follows the saved hours");
+        h.contains(ref, "bill as perishable cargo, 0 hrs free", "zero included");
+        h.contains(ref, "including one not in this list, bills as special cargo, 24 hrs free", "and states the special rule");
+
+        // 108 h elapsed. General at 24 h free: ceil(84/24) = 4 days. Perishable at 0 h: ceil(108/24) = 5 days.
+        await h.fillAdvice(app.page, "import", { wt: 500, t1: "2026-09-01T08:00", t2: "2026-09-05T20:00" });
+        h.contains(await app.page.$eval("#i_storageinfo", (e) => e.textContent), "4 day(s)", "general at 24 h free");
+        await app.page.selectOption("#i_shc", "PER");
+        await app.page.waitForTimeout(200);
+        h.contains(await app.page.$eval("#i_storageinfo", (e) => e.textContent), "5 day(s)", "perishable at 0 h free");
+      } finally { await app.close(); }
+    },
   },
 };
