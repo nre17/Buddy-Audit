@@ -122,6 +122,8 @@ module.exports = {
           h.eq(row[x.col], "60.00", x.mode + ": the register column shows the amount typed");
           h.eq(row[13], "84.00", x.mode + ": Total Sale is the full charges");
           h.contains(row[14], "Amount differs from total: " + x.reason, x.mode + ": Remarks gives the reason");
+          const tip = await app.page.evaluate((id) => document.querySelector('#regtbl tr[data-id="' + id + '"]').cells[14].title, x.id);
+          h.contains(tip, "Amount differs from total: " + x.reason, x.mode + ": hovering Remarks shows the reason in full");
           const exported = await app.page.evaluate((id) => regRows(DB.entries.filter((e) => e.id === id)).slice(-1)[0], x.id);
           h.contains(exported[18], "[amount differs from total: " + x.reason + "]", x.mode + ": the export carries the reason");
         }

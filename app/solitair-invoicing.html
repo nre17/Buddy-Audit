@@ -3933,7 +3933,8 @@ function renderRegister(){
       +'<td class="n">'+(e.pay.cass?money(e.pay.cass):"")+'</td>'
       +'<td class="n">'+(e.pay.bank?money(e.pay.bank):"")+'</td>'
       +'<td class="n"><b>'+money(e.total)+'</b></td>'
-      +'<td><span class="badge '+pb+'">'+esc(e.payMode)+'</span> '+esc(e.rem||"")+(e.payReason?' <i>Amount differs from total: '+esc(e.payReason)+'</i>':'')+(e.storageOverride?' <b style="color:#b8860b">OVR</b>':'')+'</td>'
+      /* Remarks is cut to 250px on screen; the tooltip carries it in full */
+      +'<td title="'+esc([e.rem, e.payReason ? "Amount differs from total: "+e.payReason : ""].filter(Boolean).join("  |  "))+'"><span class="badge '+pb+'">'+esc(e.payMode)+'</span> '+esc(e.rem||"")+(e.payReason?' <i>Amount differs from total: '+esc(e.payReason)+'</i>':'')+(e.storageOverride?' <b style="color:#b8860b">OVR</b>':'')+'</td>'
       +'<td style="text-align:center"><span class="'+(e.hardcopy?"tick":"cross")+'" data-hc="'+e.id+'" style="cursor:pointer" title="Toggle hard copy received">'+(e.hardcopy?"&#10003;":"&#9675;")+'</span></td>'
       +'<td><button class="btn sm" data-print="'+e.id+'">Print</button> <button class="btn sm dgr" data-del="'+e.id+'">Del</button></td></tr>');
   });
