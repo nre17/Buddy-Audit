@@ -73,12 +73,11 @@ tab's panel against 1.1.0.
   `billAddr`; `acct` and `addr` now mirror the billing TRN and address, so a backup
   still prints correctly if restored into 1.1.0.
 - `APP_VERSION` is 1.2.0.
-- **The printed advice is white, in the company colours:** blue `#1042FF`
-  (RGB 16, 66, 255) for the title, headings, labels, total and table lines, and
-  a green `#00FF57` (RGB 0, 255, 87) stripe under the header and under the total.
-  The dark filled bars are gone. Colour is carried by lines rather than fills, so
-  it prints even with background graphics turned off. The shift handover report
-  keeps its previous style.
+- **The printed advice is white, in the company blue** `#1042FF` (RGB 16, 66,
+  255) for the title, headings, labels, total and table lines. The dark filled
+  bars are gone. Colour is carried by lines rather than fills, so it prints even
+  with background graphics turned off. The shift handover report keeps its
+  previous style.
 - The export charge "Aviation / Live Animals (AVI) Handling" is now **Live
   Animals (AVI) Handling**. Rate, minimum and VAT are unchanged.
 - **Dates and times are mandatory** on both advices and marked with an asterisk:

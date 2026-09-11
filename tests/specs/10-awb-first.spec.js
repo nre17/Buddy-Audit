@@ -480,7 +480,7 @@ module.exports = {
       } finally { await app.close(); }
     },
 
-    "the printed advice is white, in the company blue and green": async (h) => {
+    "the printed advice is white, in the company blue only": async (h) => {
       const app = await h.openApp();
       try {
         await h.fillAdvice(app.page, "export", {
@@ -498,19 +498,24 @@ module.exports = {
             headings: style(".items th").color,
             labels: style(".meta td.l").color,
             total: style(".items tr.tot td").color,
-            stripe: style(".greenrule").borderTopColor,
-            totalStripe: style(".items tr.tot td").borderBottomColor,
+            totalLine: style(".items tr.tot td").borderBottomColor,
+            green: [...doc.querySelectorAll("*")].some((el) => {
+              const c = getComputedStyle(el), GREEN = "rgb(0, 255, 87)";
+              const line = ["Top", "Right", "Bottom", "Left"].some((side) =>
+                c["border" + side + "Color"] === GREEN && c["border" + side + "Width"] !== "0px" && c["border" + side + "Style"] !== "none");
+              return line || c.color === GREEN || c.backgroundColor === GREEN;
+            }),
             fills: [...new Set(fills)],
           };
         });
-        const BLUE = "rgb(16, 66, 255)", GREEN = "rgb(0, 255, 87)";
+        const BLUE = "rgb(16, 66, 255)";
         h.assert(s.branded, "the advice carries the company style");
         h.eq(s.title, BLUE, "title in company blue");
         h.eq(s.headings, BLUE, "charge table headings in company blue");
         h.eq(s.labels, BLUE, "field labels in company blue");
         h.eq(s.total, BLUE, "total in company blue");
-        h.eq(s.stripe, GREEN, "a green stripe under the header");
-        h.eq(s.totalStripe, GREEN, "and under the total");
+        h.eq(s.totalLine, BLUE, "the total is ruled in company blue");
+        h.assert(!s.green, "no green anywhere on the advice");
         h.eq(s.fills.join(", "), "", "no dark or coloured fills: the advice is white");
       } finally { await app.close(); }
     },

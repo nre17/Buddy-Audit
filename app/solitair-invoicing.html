@@ -186,22 +186,21 @@ table.reg tbody tr:hover td:last-child{background:#f8fafc}
 .doc .items tr.tot2 td{background:#f3f4f6;font-weight:700;border-top:1.5px solid #111827}
 .doc.rep .items td{padding:1.5px 4px;font-size:9px}
 .doc.rep .meta td{font-size:9px}
-/* the charge advice: white, in the company colours. Blue #1042FF (16,66,255)
-   for the title, headings, labels, total and lines; green #00FF57 (0,255,87)
-   only as stripes, because it is too light to read as text on white. Colour is
-   carried by borders, not fills, so it prints even with background graphics
-   turned off. The shift handover report (.doc.rep) keeps its own style. */
+/* the charge advice: white, in the company blue #1042FF (16,66,255) only, for
+   the title, headings, labels, total and lines. Colour is carried by borders,
+   not fills, so it prints even with background graphics turned off. The shift
+   handover report (.doc.rep) keeps its own style. */
 .doc.adv .dh{border-bottom:3px solid #1042FF}
-.doc.adv .greenrule{height:0;background:none;border-top:3px solid #00FF57;margin-bottom:4px}
+.doc.adv .greenrule{height:0;background:none;border:0;margin-bottom:4px}
 .doc.adv .copyname{color:#1042FF}
 .doc.adv .title{background:#fff;color:#1042FF;border-top:2px solid #1042FF;border-bottom:2px solid #1042FF}
 .doc.adv .meta td{border-color:#c7d2fe}
 .doc.adv .meta td.l{background:#fff;color:#1042FF}
 .doc.adv .items th{background:#fff;color:#1042FF;border:1px solid #c7d2fe;border-bottom:2px solid #1042FF}
 .doc.adv .items td{border-color:#c7d2fe}
-.doc.adv .items tr.tot td{background:#fff;color:#1042FF;border-top:2px solid #1042FF;border-bottom:3px solid #00FF57}
+.doc.adv .items tr.tot td{background:#fff;color:#1042FF;border-top:2px solid #1042FF;border-bottom:2px solid #1042FF}
 .doc.adv .sig td,.doc.adv .bank td{border-color:#c7d2fe}
-.doc.adv .foot{border-top:2px solid #00FF57}
+.doc.adv .foot{border-top:1px solid #1042FF}
 
 /* ===== Modal ===== */
 .modal{display:none;position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:100;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
