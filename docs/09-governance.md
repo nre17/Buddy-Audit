@@ -191,6 +191,7 @@ Architectural decisions and their reasoning. Append; do not rewrite.
 | D-09 | 2026-09-11 | Load shipments by pasting the manifest into a Shipment Database tab, stored under its own key and outside the backup | Paste from Excel matches how the manifest already arrives, and matching columns by heading survives changes to the sheet. A separate key keeps a large lookup table out of every invoice save, and a re-importable copy does not belong in the backup. XLSX upload was not built: it needs an in-browser unzip and XML reader, and copy-paste already covers it. |
 | D-10 | 2026-09-11 | Never fill a shipment into the advice for the other direction, and clear filled details when the AWB changes | Export and import price from different tariffs, and one shipment's details under another AWB would produce a plausible-looking wrong invoice. |
 | D-11 | 2026-09-11 | Keep the application a prototype on demo customer data, shown on a Customer Database tab, and build no per-machine customer master | The real customer master, with its TRNs and addresses, belongs in the ERP. Loading it into a browser prototype would put confidential master data where it has no controls. Recorded against audit A-22. |
+| D-12 | 2026-09-11 | Block an advice from being previewed, printed or saved while its AWB belongs to a shipment of the other direction | Not filling such a shipment in (D-10) still let it be invoiced on the wrong tariff by typing the details by hand. The check runs at the moment of saving, so an AWB typed before its manifest was loaded is caught too. |
 
 ---
 

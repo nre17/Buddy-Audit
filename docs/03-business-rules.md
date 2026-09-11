@@ -242,8 +242,9 @@ in at the start of the window.
 
 ## 7. Downstream consequences of saving
 
-`saveAdvice()` validates the AWB, the AWB owner, the billing party, weight, pieces
-and at least one charge line, allocates the reference, then:
+`saveAdvice()` validates the AWB - including that it is not a shipment of the
+other direction - the AWB owner, the billing party, weight, pieces and at least
+one charge line, allocates the reference, then:
 
 1. Pushes the invoice into `DB.entries` with `type: "invoice"`.
 2. **Export only:** auto-joins the lying list, keyed `"LLA" + invoiceId`, using the
@@ -305,9 +306,13 @@ Typing an AWB on an advice fills in its shipment from the Shipment Database.
   weight, because charges run on gross weight.
 - **Changing the AWB** to one that is not loaded clears the details filled in for
   the previous shipment. One shipment's data never sits under another's AWB.
-- **Wrong direction:** an import shipment's AWB typed on the Export Advice, or the
-  reverse, is not filled in, because the two advices price from different tariffs.
-  The form offers to open it on the right one.
+- **Wrong direction is blocked:** an import shipment's AWB on the Export Advice,
+  or the reverse, is not filled in, and the advice cannot be previewed, printed or
+  saved while that AWB is on it, because the two advices price from different
+  tariffs. The AWB field turns red and the form offers to open it on the right
+  one. The check runs when saving, so an AWB typed before its manifest was loaded
+  is caught too. An AWB that is not in the Shipment Database cannot be checked,
+  so it is not blocked.
 - **Everything stays editable.** Filling in sets values; it does not lock them.
 
 Storage and late-acceptance charges are calculated from these timestamps, so the

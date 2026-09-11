@@ -213,7 +213,7 @@ invoices keep the name they were raised under.
 | Symptom | Cause | Action |
 |---|---|---|
 | An AWB does not fill in | Its manifest has not been loaded, or the AWB is typed differently | Search for the AWB on the Shipment Database tab. Load the manifest, or enter the details by hand |
-| "...is an import shipment" on the Export Advice, or the reverse | The AWB is on the manifest for the other direction | Click **Open in Import Advice** (or Export) |
+| "Blocked. AWB ... is an import shipment" on the Export Advice, or the reverse | The AWB is on the manifest for the other direction, so the advice cannot be saved there | Click **Open in Import Advice** (or Export) and raise it there |
 | Departure or RCF times are out by about a month | The manifest's day and month were read the wrong way round | Clear the loaded shipments, paste again, and set *Dates in this sheet are written* in the preview |
 | "Billing party is required" | No billing party chosen | Choose one at the bottom of the advice, or click **Same as AWB owner** |
 | Register is empty after an update | Different browser, or a different browser profile, from the one holding the data - not the file's name or location | Open the app in the browser the counter normally uses. If it is genuinely gone, restore from backup |

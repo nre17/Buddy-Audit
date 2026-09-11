@@ -249,6 +249,46 @@ module.exports = {
       } finally { await app.close(); }
     },
 
+    "an AWB of the other direction blocks the advice from being saved, previewed or printed": async (h) => {
+      const { app } = await withManifest(h, [exportRow(h), importRow(h)]);
+      try {
+        const entries = async () => (await h.db(app.page)).entries.length;
+        const toastAfter = async (sel) => {
+          await app.page.evaluate(() => { document.getElementById("toast").textContent = ""; });
+          await app.page.click(sel);
+          await app.page.waitForTimeout(250);
+          return text(app.page, "#toast");
+        };
+        const marked = (id) => app.page.$eval("#" + id, (e) => e.closest(".f").classList.contains("bad"));
+
+        await h.tab(app.page, "Export Advice");
+        await app.page.fill("#a_mawb", "780-30200002");
+        await app.page.waitForTimeout(200);
+        h.contains(await text(app.page, "#a_awbstatus"), "Blocked", "the notice says the advice is blocked");
+        h.assert(await marked("a_mawb"), "the AWB field is marked");
+        // details typed in by hand must not get round the block
+        await h.fillAdvice(app.page, "export", { cust: h.SAMPLE_CUSTOMER.name, wt: 100, pcs: 5 });
+        h.contains(await toastAfter("#a_save"), "is an import shipment", "save is refused");
+        h.contains(await toastAfter("#a_preview"), "is an import shipment", "preview is refused");
+        h.contains(await toastAfter("#a_print"), "is an import shipment", "print is refused");
+        h.eq(await entries(), 0, "nothing reached the register");
+
+        await h.tab(app.page, "Import Advice");
+        await app.page.fill("#i_mawb", "780-30200001");
+        await app.page.waitForTimeout(200);
+        await h.fillAdvice(app.page, "import", { cust: h.OTHER_CUSTOMER.name, wt: 100, pcs: 5 });
+        h.contains(await toastAfter("#i_save"), "is an export shipment", "an export AWB is refused on the import advice");
+        h.eq(await entries(), 0, "still nothing in the register");
+
+        await h.tab(app.page, "Export Advice");
+        await app.page.fill("#a_mawb", "780-30200001");
+        await app.page.waitForTimeout(200);
+        h.assert(!(await marked("a_mawb")), "a correct AWB lifts the block");
+        await app.page.fill("#a_wt", "100");
+        h.contains(await h.saveAdvice(app.page, "export"), "Invoice saved", "and the advice saves");
+      } finally { await app.close(); }
+    },
+
     "an AWB that is not in the database is left for manual entry, and saves": async (h) => {
       const { app } = await withManifest(h, [exportRow(h)]);
       try {

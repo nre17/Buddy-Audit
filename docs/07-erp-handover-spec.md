@@ -260,7 +260,7 @@ These are the constraints it cannot solve and the ERP must:
 11. **Shipment data from the source, not re-keyed.** Today the counter pastes a
     manifest into a local Shipment Database so an advice fills from its AWB. The
     ERP should take shipment data straight from the booking or cargo management
-    system, keyed by AWB, keeping the same guards: no fill across export and
+    system, keyed by AWB, keeping the same guards: no fill and no invoice across export and
     import, and no stale details left under a changed AWB.
 12. **A billing party distinct from the AWB owner**, drawn from the ERP's real
     customer master, with its TRN and address printed on the tax invoice.

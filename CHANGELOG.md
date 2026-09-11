@@ -11,7 +11,7 @@ The advice tabs now start from the AWB. The day's manifest is pasted into a new
 Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
 company invoiced is chosen separately from the company the AWB is booked under.
 
-Verified by the regression suite (77 cases) and a pixel comparison of every other
+Verified by the regression suite (78 cases) and a pixel comparison of every other
 tab's panel against 1.1.0.
 
 ### Added
@@ -46,15 +46,16 @@ tab's panel against 1.1.0.
     prefix while typing.
   - Changing the AWB to one that is not loaded clears the details filled in for the
     previous shipment.
-  - An AWB for the other direction is not filled in; the form offers to open it on
-    the right tab.
+  - An AWB for the other direction is **blocked**: it is not filled in, the
+    advice cannot be previewed, printed or saved while it is on the form, the AWB
+    field turns red, and the form offers to open it on the right tab.
 - **Billing party** section at the bottom of the shipment details, picked from the
   same customer master, with its TRN and address beside it. **Same as AWB owner**
   copies the owner. The TRN and address are cleared if the name changes to one
   outside the master. Required to preview, print and save.
 - Migration **M3**: invoices saved before the billing party existed are billed to
   their customer.
-- `tests/specs/10-awb-first.spec.js` (24 cases), `tests/specs/11-customer-database.spec.js`
+- `tests/specs/10-awb-first.spec.js` (25 cases), `tests/specs/11-customer-database.spec.js`
   (3 cases), and a migration case in `09-migrations.spec.js`.
 - `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files, because
   shipment manifests name customers and shipments.
