@@ -266,12 +266,12 @@ keeps the two apart.
 |---|---|---|
 | Field | `cust` | `billTo`, `billTrn`, `billAddr` |
 | Comes from | The Shipment Database, or typed | The Customer Database - the picker lists exactly its customers; **Same as AWB owner** copies the owner |
-| Printed as | AWB Owner | Billing Party, Billing Party TRN, Billing Party Address |
+| On the printed advice | Not printed - shown on the form only | Billing Party, Billing Party TRN, Billing Party Address |
 | Reported on by | Register, Dashboard, Shift Handover, exports | The printed advice |
 | Required | Yes | Yes |
 
-The billing party's TRN and address are the only customer TRN and address on the
-advice. The billing party is **never filled in automatically**: an unnoticed
+The printed advice names only the billing party, with its TRN and address; the
+AWB owner is not printed. The billing party is **never filled in automatically**: an unnoticed
 default would put the charges on the wrong company's tax document.
 
 If the billing party is changed to a name that is not in the customer master, the
@@ -298,7 +298,11 @@ Typing an AWB on an advice fills in its shipment from the Shipment Database.
   (the second timestamp) or the RCF time on an import (the first). The counter's
   own timestamp - acceptance on an export, delivery on an import - is never
   touched. A value missing from the manifest is left blank to be entered, and an
-  SHC code the application does not know is not applied.
+  SHC code the application does not know is not applied. A sheet with no gross
+  weights at all, or no weight column, is flagged in the preview before importing.
+  Gross weight is read from its usual headings (Gross Weight, Gross Wt, GW,
+  Weight, KGS); a chargeable or volume weight column is never read as gross
+  weight, because charges run on gross weight.
 - **Changing the AWB** to one that is not loaded clears the details filled in for
   the previous shipment. One shipment's data never sits under another's AWB.
 - **Wrong direction:** an import shipment's AWB typed on the Export Advice, or the

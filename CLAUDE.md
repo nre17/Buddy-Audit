@@ -79,7 +79,8 @@ Full policy: `docs/08-data-protection.md`.
 - `cust` is the **AWB owner**. The Register, Dashboard, Shift Handover and the
   exports all report on it. Do not repurpose it.
 - The **billing party** is `billTo` / `billTrn` / `billAddr`. Its TRN and address
-  are the only ones on the form and the ones that print (`billingOf()`).
+  are the only ones on the form, and it is the only party printed on the advice
+  (`billingOf()`). The AWB owner is never printed.
 - `acct` and `addr` are legacy mirrors of `billTrn` / `billAddr`, kept so a backup
   still prints correctly if restored into an earlier version. Keep writing them.
 - Shipments (`SH`, key `solitair_shipments_v1`) are a lookup table, not a record.

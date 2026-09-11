@@ -1,6 +1,6 @@
 # Code Map
 
-Navigation aid for `app/solitair-invoicing.html` (5,804 lines).
+Navigation aid for `app/solitair-invoicing.html` (5,817 lines).
 
 > Line numbers verified against the file on 11 September 2026.
 
@@ -8,7 +8,7 @@ Navigation aid for `app/solitair-invoicing.html` (5,804 lines).
 that range:
 
 ```bash
-sed -n '3558,3687p' app/solitair-invoicing.html   # collectAdvice()
+sed -n '3571,3700p' app/solitair-invoicing.html   # collectAdvice()
 grep -n "^function renderRegister" app/solitair-invoicing.html
 ```
 
@@ -22,7 +22,7 @@ grep -n "^function renderRegister" app/solitair-invoicing.html
 | Lines | What | Why |
 |---|---|---|
 | 317 - 2208 | `CUSTOMERS` master (1,892 demo records) | 33% of the file, pure data, will consume your context for nothing |
-| 4396 | `LOGO_LIGHT` | One single line of 55,954 characters (base64 PNG) |
+| 4409 | `LOGO_LIGHT` | One single line of 55,954 characters (base64 PNG) |
 
 Avoiding the master is about context budget, not secrecy - it holds demo data
 (see `08-data-protection.md`). Query it rather than reading it:
@@ -50,23 +50,23 @@ what the test harness resolves `h.SAMPLE_CUSTOMER` from.
 | 2321 - 2363 | Core utilities | `$`, `$$`, `esc`, `num`, `pad`, `ymd`, `nowLocalDT`, `money`, `fmtD`, `fmtDT`, `toast`, `stamp`, `refFor`, `previewRef`, `shcLabel`, `shcClass`, `calcStorageDays` |
 | 2364 - 2403 | Form + storage helpers | `fld`, `sel`, `save`, `load` (**contains all three migrations**) |
 | 2404 - 2431 | Modal + cash | `modal`, `closeModal`, `refreshChip`, `cashOnHand` |
-| 2432 - 3072 | **Shipment Database** | The `SH` store (`shLoad`, `shSave`), `awbKey`, `shFind`, `shDirection`, `shMasterName`; reading a manifest (`parseDelimited`, `SH_COLUMNS`, `shMapHeader`, `shDateParts`, `shDateValue`, `shDateOrder`, `shParseManifest`); `shImport`, `shDemoItems`; the AWB field on the advices (`wireAwbLookup`); the tab (`buildShipments`) |
-| 3077 - 3522 | **`buildAdvice(mode)`** | The largest function. Builds both advice forms - AWB first, shipment details, billing party - fills both pickers, wires every listener, contains the `applyAutoQty()` auto-charge engine |
-| 3523 - 3557 | Line maths | `recalcLine` (per-row charge), `recalcAll` (tab total) |
-| 3558 - 3687 | **`collectAdvice(mode)`** | Turns the form into the saved invoice record |
-| 3688 - 3740 | `adviceMissing`, `saveAdvice(mode)` | The required-field check shared by preview, print and save; validation, ref allocation, push to `DB.entries`, downstream refresh |
-| 3741 - 3942 | Invoice register | `buildRegister`, `filteredEntries`, `renderRegister`, `handoverDialog`, `openingDialog` |
-| 3943 - 4082 | Dashboard | `buildDash`, `dashRange`, `renderDash`, `kpi`, `pctOf`, `bars` |
-| 4083 - 4188 | Printable advice | `billingOf`, `docCopy` (the invoice layout), `row2`, `printAdvice`. Prints the CGS-GND-F037/F038 form codes in the footer. |
-| 4189 - 4378 | Exports | `regRows`, a dependency-free XLSX writer (`crc32`, `zipBuild`, `sheetXml`, `buildXlsx`), `exportExcel`, `exportCsv` |
-| 4379 - 4397 | State + logo | `DB` initial shape (including `company` / `bank` site config), `LOGO_LIGHT` (**line 4396, do not read**), `LOGO_PRINT` |
-| 4401 - 4489 | **Rate tables** | `EXPORT_LINES`, `EXPORT_OPTIONAL`, `IMPORT_LINES`, `IMPORT_OPTIONAL`. See `03-business-rules.md` |
-| 4490 - 4693 | Rates & Data tab | `buildAdmin`, `rateTable`, `applyRateOverrides`, **Company & Bank Details card**, logo upload, staff list, backup/restore |
-| 4694 - 4751 | Sample data | `seedDemo` (its customers are drawn from `CUSTOMERS`) |
-| 4752 - 5212 | Shift handover | `EQUIP_DEFAULT`, `SHIFTS`, `buildHandover`, held-shipment panels, equipment table, `syncShiftWindow`, `handoverFigures` (the calculation), `renderHandover`, `handoverData`, `saveHandover`, `renderSavedReports`, `printHandover`, lying-list band |
-| 5213 - 5383 | Lying list | `LL` state, `llLoad`/`llSave`, `buildLying`, `llCommit`, `llSyncFromRegister`, `llSweep`, `llCountdown`, `renderLying` |
-| 5384 - 5696 | Facility security | `buildSecurity`, `secAdd`, `addOneAwb`, `loadSample`, backup/restore, `secFind`, `renderSecurity`, `findInvoiceByAWB`, `scanMissing`, `ackSelected`, `addBlock`, `confirmLookup` |
-| 5697 - 5804 | Boot | `fillStaff`, `applyLogo`, `applySiteOverrides`, `boot()` (loads shipments and builds the Shipment Database and Customer Database tabs before the advices), tab wiring, the 30s lying-list timer, Ctrl+S / Ctrl+P / Esc handlers (Ctrl+S is dead - audit A-06) |
+| 2432 - 3085 | **Shipment Database** | The `SH` store (`shLoad`, `shSave`), `awbKey`, `shFind`, `shDirection`, `shMasterName`; reading a manifest (`parseDelimited`, `SH_COLUMNS`, `shMapHeader`, `shDateParts`, `shDateValue`, `shDateOrder`, `shParseManifest`); `shImport`, `shDemoItems`; the AWB field on the advices (`wireAwbLookup`); the tab (`buildShipments`) |
+| 3090 - 3535 | **`buildAdvice(mode)`** | The largest function. Builds both advice forms - AWB first, shipment details, billing party - fills both pickers, wires every listener, contains the `applyAutoQty()` auto-charge engine |
+| 3536 - 3570 | Line maths | `recalcLine` (per-row charge), `recalcAll` (tab total) |
+| 3571 - 3700 | **`collectAdvice(mode)`** | Turns the form into the saved invoice record |
+| 3701 - 3753 | `adviceMissing`, `saveAdvice(mode)` | The required-field check shared by preview, print and save; validation, ref allocation, push to `DB.entries`, downstream refresh |
+| 3754 - 3955 | Invoice register | `buildRegister`, `filteredEntries`, `renderRegister`, `handoverDialog`, `openingDialog` |
+| 3956 - 4095 | Dashboard | `buildDash`, `dashRange`, `renderDash`, `kpi`, `pctOf`, `bars` |
+| 4096 - 4201 | Printable advice | `billingOf`, `docCopy` (the invoice layout), `row2`, `printAdvice`. Prints the CGS-GND-F037/F038 form codes in the footer. |
+| 4202 - 4391 | Exports | `regRows`, a dependency-free XLSX writer (`crc32`, `zipBuild`, `sheetXml`, `buildXlsx`), `exportExcel`, `exportCsv` |
+| 4392 - 4410 | State + logo | `DB` initial shape (including `company` / `bank` site config), `LOGO_LIGHT` (**line 4409, do not read**), `LOGO_PRINT` |
+| 4414 - 4502 | **Rate tables** | `EXPORT_LINES`, `EXPORT_OPTIONAL`, `IMPORT_LINES`, `IMPORT_OPTIONAL`. See `03-business-rules.md` |
+| 4503 - 4706 | Rates & Data tab | `buildAdmin`, `rateTable`, `applyRateOverrides`, **Company & Bank Details card**, logo upload, staff list, backup/restore |
+| 4707 - 4764 | Sample data | `seedDemo` (its customers are drawn from `CUSTOMERS`) |
+| 4765 - 5225 | Shift handover | `EQUIP_DEFAULT`, `SHIFTS`, `buildHandover`, held-shipment panels, equipment table, `syncShiftWindow`, `handoverFigures` (the calculation), `renderHandover`, `handoverData`, `saveHandover`, `renderSavedReports`, `printHandover`, lying-list band |
+| 5226 - 5396 | Lying list | `LL` state, `llLoad`/`llSave`, `buildLying`, `llCommit`, `llSyncFromRegister`, `llSweep`, `llCountdown`, `renderLying` |
+| 5397 - 5709 | Facility security | `buildSecurity`, `secAdd`, `addOneAwb`, `loadSample`, backup/restore, `secFind`, `renderSecurity`, `findInvoiceByAWB`, `scanMissing`, `ackSelected`, `addBlock`, `confirmLookup` |
+| 5710 - 5817 | Boot | `fillStaff`, `applyLogo`, `applySiteOverrides`, `boot()` (loads shipments and builds the Shipment Database and Customer Database tabs before the advices), tab wiring, the 30s lying-list timer, Ctrl+S / Ctrl+P / Esc handlers (Ctrl+S is dead - audit A-06) |
 
 ---
 
@@ -76,21 +76,21 @@ Changing any of these has wide blast radius. Read the whole function first.
 
 | Function | Line | Why it matters |
 |---|---:|---|
-| `buildAdvice(mode)` | 3077 | Builds **both** advice forms from one code path (`isExp` flag). A change to Export is automatically a change to Import. |
-| `applyAutoQty()` | inside `buildAdvice` (3355) | The auto-charge engine. Decides which tariff lines get a quantity from weight, SHC, HAWB qty and the two timestamps. |
-| `wireAwbLookup(mode, recalc)` | 2770 | The AWB-first lookup and its suggestion list. Fills a shipment into the form and re-runs the auto-charge engine; owns the guards against filling on a prefix, leaving details under a changed AWB, and filling across export and import. |
-| `shDateOrder(parts)` | 2617 | Decides whether an import's dates are day-first or month-first. **Every storage charge on a filled advice depends on it.** |
-| `shParseManifest(text, order)` | 2641 | Reads pasted or uploaded manifest text: delimiter, heading match, dates, per-row notes. |
-| `recalcLine(tr)` | 3523 | The charge formula: `qty > 0 ? max(rate*qty, min) : 0`, then VAT. |
-| `collectAdvice(mode)` | 3558 | **Reimplements the same charge formula** to build the saved record. If you change `recalcLine`, you must change this too, or the screen and the invoice will disagree. This has caused a production bug before. |
-| `billingOf(e)` | 4090 | The billing party of any record, legacy ones included. What the printed advice shows. |
-| `renderRegister()` | 3815 | The ledger and the running cash balance. |
+| `buildAdvice(mode)` | 3090 | Builds **both** advice forms from one code path (`isExp` flag). A change to Export is automatically a change to Import. |
+| `applyAutoQty()` | inside `buildAdvice` (3368) | The auto-charge engine. Decides which tariff lines get a quantity from weight, SHC, HAWB qty and the two timestamps. |
+| `wireAwbLookup(mode, recalc)` | 2776 | The AWB-first lookup and its suggestion list. Fills a shipment into the form and re-runs the auto-charge engine; owns the guards against filling on a prefix, leaving details under a changed AWB, and filling across export and import. |
+| `shDateOrder(parts)` | 2622 | Decides whether an import's dates are day-first or month-first. **Every storage charge on a filled advice depends on it.** |
+| `shParseManifest(text, order)` | 2646 | Reads pasted or uploaded manifest text: delimiter, heading match, dates, per-row notes. |
+| `recalcLine(tr)` | 3536 | The charge formula: `qty > 0 ? max(rate*qty, min) : 0`, then VAT. |
+| `collectAdvice(mode)` | 3571 | **Reimplements the same charge formula** to build the saved record. If you change `recalcLine`, you must change this too, or the screen and the invoice will disagree. This has caused a production bug before. |
+| `billingOf(e)` | 4103 | The billing party of any record, legacy ones included. What the printed advice shows. |
+| `renderRegister()` | 3828 | The ledger and the running cash balance. |
 | `cashOnHand()` | 2421 | Opening float + cash collected − cash handed over. Feeds the header chip, the dashboard and the handover validation. |
-| `handoverFigures()` | 4901 | Independently recomputes shift cash. Does **not** call `cashOnHand()`. |
-| `llSyncFromRegister()` | 5300 | Auto-joins export invoices to the lying list. Dedupes by AWB across live **and** cleared. |
-| `findInvoiceByAWB(awb)` | 5602 | The invoiced / not-invoiced check behind Facility Security. |
+| `handoverFigures()` | 4914 | Independently recomputes shift cash. Does **not** call `cashOnHand()`. |
+| `llSyncFromRegister()` | 5313 | Auto-joins export invoices to the lying list. Dedupes by AWB across live **and** cleared. |
+| `findInvoiceByAWB(awb)` | 5615 | The invoiced / not-invoiced check behind Facility Security. |
 | `load()` | 2369 | Contains all three legacy backfills. Any new persisted field needs one here. |
-| `applySiteOverrides()` | 5730 | Applies the per-machine company and bank details from `DB` over `CFG`. The reason no bank details are in the source. |
+| `applySiteOverrides()` | 5743 | Applies the per-machine company and bank details from `DB` over `CFG`. The reason no bank details are in the source. |
 | `previewRef(mode)` | 2348 | The reference the next saved invoice would get. The single place to fix A-02. |
 
 ---

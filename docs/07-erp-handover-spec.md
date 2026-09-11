@@ -78,9 +78,9 @@ timestamps drive the charges:
 | Import | Received at facility (RCF) | Delivery to consignee |
 
 > **AWB owner and billing party are distinct.** An AWB booked under one company is
-> often invoiced to another. The ERP must carry both on the charge document: the
-> AWB owner for operational reporting, and the billing party, with its TRN and
-> address, for the tax invoice.
+> often invoiced to another. The ERP must capture both: the AWB owner
+> for operational reporting, and the billing party, with its TRN and address, as
+> the only party printed on the charge document.
 
 **Priced automatically** — see section 4. Staff may add optional tariff charges from
 a controlled catalogue, add a free-text line, or override any rate on the advice.

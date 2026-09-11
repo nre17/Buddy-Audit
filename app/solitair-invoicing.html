@@ -2541,9 +2541,13 @@ var SH_COLUMNS = {
   shc:   ["shccode", "shc"],
   nog:   ["natureofgoods", "nog", "commodity"],
   pcs:   ["ofpieces", "pieces", "pcs", "noofpieces", "numberofpieces"],
-  wt:    ["grossweight", "grossweightkg", "weight", "weightkg", "wt", "gw"],
+  wt:    ["grossweight*", "grosswt*", "gw*", "weight*", "wt", "wtkg*", "actualweight*", "kg", "kgs"],
   cust:  ["customer", "customername", "awbowner", "agent", "shipper"]
 };
+
+/* headings a field must never be read from even when an alias matches: charges
+   run on gross weight, so a chargeable or volume weight column is not it */
+var SH_NOT = { wt: /chargeable|volum|dimension/ };
 
 function shMapHeader(cells){
   var map = {};
@@ -2552,6 +2556,7 @@ function shMapHeader(cells){
     if(!h) return;
     Object.keys(SH_COLUMNS).some(function(f){
       if(map[f] !== undefined) return false;
+      if(SH_NOT[f] && SH_NOT[f].test(h)) return false;
       var hit = SH_COLUMNS[f].some(function(a){
         return a.charAt(a.length-1) === "*" ? h.indexOf(a.slice(0, -1)) === 0 : h === a;
       });
@@ -2686,6 +2691,7 @@ function shParseManifest(text, orderOverride){
     else { seen[key] = items.length; items.push(item); }
   });
   return { items:items, skipped:skipped, dupes:dupes, order:order, detected:detected,
+           weightColumn: map.wt !== undefined,
            dated: parts.some(function(x){ return !x.iso; }) };
 }
 
@@ -2711,8 +2717,8 @@ function shImport(items){
 
 /* Ten demo shipments for training and demonstration: seven exports and three
    imports. Owners come from the demo customer master, air waybills from the
-   reserved 780-3090xxxx demo band, and times are relative to now. One has no
-   gross weight, as manifests often do, so the manual step can be seen. */
+   reserved 780-3090xxxx demo band, and times are relative to now. Every one
+   carries a gross weight, so each fills in completely. */
 function shDemoItems(){
   var now = Date.now();
   var at = function(hours){ var d = new Date(now + hours*36e5); return ymd(d) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
@@ -2727,7 +2733,7 @@ function shDemoItems(){
     ["780-30901006", "BEY", "DWC", "ZZ 906", null, 60, "GEN", "Garments and Textiles",        450, 1995],
     ["780-30901007", "DWC", "NBO", "ZZ 907", 21, null, "VAL", "Gold Bars",                    220, 88.4],
     ["780-30901008", "NBO", "DWC", "ZZ 908", null, 9,  "VUN", "Mobile Phones",                610, 1210],
-    ["780-30901009", "DWC", "DAM", "ZZ 909", 26, null, "GEN", "Household Goods",               80, null],
+    ["780-30901009", "DWC", "DAM", "ZZ 909", 26, null, "GEN", "Household Goods",               80, 410],
     ["780-30901010", "DWC", "MCT", "ZZ 910", 31, null, "GEN", "Machinery Parts",               45, 940]
   ].map(function(r, i){
     return { awb:r[0], key:awbKey(r[0]), org:r[1], dst:r[2], fltno:r[3],
@@ -3013,6 +3019,13 @@ function buildShipments(){
       + (r.skipped ? ". " + plural(r.skipped, "row") + " without an AWB skipped" : "")
       + (r.dupes ? ". " + plural(r.dupes, "repeated AWB") + ", the last row kept" : "")
       + (noted ? ". " + noted + " with notes in the last column" : "") + ".</div>";
+    var weightless = r.items.filter(function(x){ return x.wt == null; }).length;
+    if(!r.weightColumn || weightless === r.items.length){
+      h += '<div class="awbstatus warn" style="margin:0 0 6px"><b>'
+        + (r.weightColumn ? "None of these shipments has a gross weight on the sheet." : "No gross weight column was found in this sheet.")
+        + '</b> Gross weight will need entering on each advice'
+        + (r.weightColumn ? "." : ". A column headed Gross Weight, Gross Wt, GW or Weight is read automatically.") + '</div>';
+    }
     if(r.dated){
       h += '<div class="btnbar" style="align-items:center;margin-bottom:6px">'
         + '<label class="hint" for="sh_order">Dates in this sheet are written</label>'
@@ -4111,7 +4124,7 @@ function docCopy(e, copyName){
      + row2("Billing Party", bill.name, "Billing Party TRN", bill.trn)
      + row2("Billing Party Address", bill.addr, "Payment Mode", e.payMode + (e.payMode==="Cash + Card" ? "  (Cash "+money(e.pay.cash)+" / Card "+money(e.pay.card)+")" : ""))
      + row2("MAWB #", e.mawb, "HAWB #", e.hawb + (e.hawbqty ? "  (Qty: "+e.hawbqty+")" : ""))
-     + row2("AWB Owner", e.cust, "Origin / Destination", [e.org, e.dst].filter(Boolean).join(" / "))
+     + row2("Origin", e.org, "Destination", e.dst)
      + row2("Nature of Goods", e.nog, "SHC Code", (e.shc||"")+(e.shc?"  ("+shcLabel(e.shc)+")":""))
      + row2("Flight No.", e.fltno, "Gross Weight / Pieces", money(e.wt)+" kg  /  "+(e.pcs||0)+" pcs")
      + (isExp

@@ -56,6 +56,8 @@ At the start of each day, or whenever a new manifest arrives:
      times.
    - Read the **Notes** column. An unknown SHC code, an owner not in the customer
      master or a missing gross weight will each need attention on the advice.
+   - If the preview says the sheet has **no gross weights**, check its heading row
+     and weight column first; otherwise weights need typing on each advice.
 5. Click **Import**.
 
 Columns can be in any order; they are matched by their headings. A CSV file works

@@ -376,7 +376,7 @@ module.exports = {
       } finally { await app.close(); }
     },
 
-    "the printed advice shows the billing party, its TRN and address, and the AWB owner": async (h) => {
+    "the printed advice names only the billing party, with its TRN and address": async (h) => {
       const app = await h.openApp();
       try {
         await h.fillAdvice(app.page, "export", {
@@ -387,8 +387,9 @@ module.exports = {
         h.contains(doc, "Billing Party", "billing party row");
         h.contains(doc, h.BILLING_CUSTOMER.name, "billing party name");
         h.contains(doc, h.BILLING_CUSTOMER.trn, "billing party TRN");
-        h.contains(doc, "AWB Owner", "AWB owner row");
-        h.contains(doc, h.SAMPLE_CUSTOMER.name, "AWB owner name");
+        h.contains(doc, addressOf(h.BILLING_CUSTOMER), "billing party address");
+        h.notContains(doc, "AWB Owner", "the AWB owner is not printed");
+        h.notContains(doc, h.SAMPLE_CUSTOMER.name, "nor is its name");
         h.notContains(doc, "Customer TRN", "the old customer TRN label is gone");
       } finally { await app.close(); }
     },
@@ -407,7 +408,7 @@ module.exports = {
         h.assert(await app.page.evaluate((n) => !!resolveCustomer(n), owner), "the sample owner is a demo master customer");
         await app.page.fill("#a_mawb", "780-30901009");
         await app.page.waitForTimeout(200);
-        h.eq(await val(app.page, "a_wt"), "", "the sample with no weight leaves it blank");
+        h.eq(await val(app.page, "a_wt"), "410", "every sample shipment carries a gross weight");
       } finally { await app.close(); }
     },
 
@@ -422,6 +423,37 @@ module.exports = {
         await app.page.waitForTimeout(200);
         h.eq(await app.page.evaluate(() => SH.items.length), 0, "cleared");
         h.eq(await app.page.evaluate(() => JSON.parse(localStorage.getItem("solitair_shipments_v1")).items.length), 0, "cleared in storage");
+      } finally { await app.close(); }
+    },
+
+    "weight headings are read in their usual forms, and a sheet without weights is flagged": async (h) => {
+      const app = await h.openApp();
+      try {
+        const r = await app.page.evaluate(() => {
+          const isWeight = (heading) => shMapHeader([heading]).wt === 0;
+          return {
+            missed: ["Gross Weight", "Gross Weight (KG)", "Gross Weight KGS", "Gross Wt", "Gross Wt (kg)", "GW", "GW (KG)",
+                     "G.W.", "Weight", "Weight KGS", "Actual Weight", "KGS"].filter((x) => !isWeight(x)),
+            wrongly: ["Chargeable Weight", "Weight (Chargeable)", "Volume Weight", "Dimensional Weight"].filter(isWeight),
+          };
+        });
+        h.eq(r.missed.join(", "), "", "every usual gross weight heading is read");
+        h.eq(r.wrongly.join(", "), "", "a chargeable or volume weight is never read as gross weight");
+
+        const blank = (awb) => row(awb, "DWC", "NBO", "ZZ 170", "09/20/2026, 09:00 AM", "", "GEN", "Spare Parts", "3", "", h.SAMPLE_CUSTOMER.name);
+        await h.tab(app.page, "Shipment Database");
+        await app.page.fill("#sh_paste", h.manifestText(h.MANIFEST_HEADER, [blank("780-30200081"), blank("780-30200082")]));
+        await app.page.click("#sh_preview");
+        await app.page.waitForTimeout(150);
+        h.contains(await text(app.page, "#sh_result"), "None of these shipments has a gross weight", "an empty weight column is flagged before importing");
+
+        const keep = h.MANIFEST_HEADER.map((x) => x !== "Gross Weight");
+        const header = h.MANIFEST_HEADER.filter((_, i) => keep[i]);
+        const rows = [blank("780-30200083")].map((cells) => cells.filter((_, i) => keep[i]));
+        await app.page.fill("#sh_paste", h.manifestText(header, rows));
+        await app.page.click("#sh_preview");
+        await app.page.waitForTimeout(150);
+        h.contains(await text(app.page, "#sh_result"), "No gross weight column was found", "a sheet with no weight column is flagged");
       } finally { await app.close(); }
     },
 

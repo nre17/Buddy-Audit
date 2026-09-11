@@ -11,7 +11,7 @@ The advice tabs now start from the AWB. The day's manifest is pasted into a new
 Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
 company invoiced is chosen separately from the company the AWB is booked under.
 
-Verified by the regression suite (76 cases) and a pixel comparison of every other
+Verified by the regression suite (77 cases) and a pixel comparison of every other
 tab's panel against 1.1.0.
 
 ### Added
@@ -21,7 +21,9 @@ tab's panel against 1.1.0.
   order. A preview lists every row with its departure or RCF time written out in
   words, the export/import split, and a note for anything that needs attention: an
   unknown SHC code, an owner not in the customer master, a missing gross weight,
-  an unreadable time. Also **Load Sample Shipments**, a searchable list of what is
+  an unreadable time. A sheet with no gross weights at all is flagged up front,
+  and weight is read from its usual headings (Gross Weight, Gross Wt, GW, Weight,
+  KGS) but never from a chargeable or volume weight column. Also **Load Sample Shipments**, a searchable list of what is
   loaded, and **Clear Loaded Shipments**.
 - **Customer Database tab**, second in the tab bar: the demo customer master the
   advices use for the AWB owner, the billing party and its TRN and address,
@@ -52,7 +54,7 @@ tab's panel against 1.1.0.
   outside the master. Required to preview, print and save.
 - Migration **M3**: invoices saved before the billing party existed are billed to
   their customer.
-- `tests/specs/10-awb-first.spec.js` (23 cases), `tests/specs/11-customer-database.spec.js`
+- `tests/specs/10-awb-first.spec.js` (24 cases), `tests/specs/11-customer-database.spec.js`
   (3 cases), and a migration case in `09-migrations.spec.js`.
 - `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files, because
   shipment manifests name customers and shipments.
@@ -61,10 +63,9 @@ tab's panel against 1.1.0.
 
 - The customer TRN and address fields at the top of the advice are gone. The only
   TRN and address on the form are the billing party's.
-- "Customer Name" is now **AWB Owner**, on the form and on the printed advice.
-- The printed advice shows **Billing Party**, **Billing Party TRN** and **Billing
-  Party Address**. Origin and Destination share one row, so the printed page is no
-  taller.
+- "Customer Name" is now **AWB Owner** on the form.
+- The printed advice names only the **Billing Party**, with its **TRN** and
+  **Address**. The AWB owner is shown on the form but not printed.
 - The saved record keeps `cust` as the AWB owner, so the Register, Dashboard, Shift
   Handover and exports are unchanged. New fields `billTo`, `billTrn` and
   `billAddr`; `acct` and `addr` now mirror the billing TRN and address, so a backup
