@@ -304,6 +304,11 @@ print under another party's TRN.
 
 ## 9. Shipment Database lookup
 
+**Sample shipments on first open.** The first time the application is opened in a
+browser, the Shipment Database loads the ten sample shipments (the demo AWB band
+780-30901001 to 780-30901010), so the lookup can be tried at once. It happens only
+when the browser has never held a Shipment Database: once cleared, it stays clear.
+
 Typing an AWB on an advice fills in its shipment from the Shipment Database.
 
 - **Suggestions.** From the third digit typed, loaded shipments whose AWB matches

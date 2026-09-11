@@ -277,7 +277,7 @@ table.reg tbody tr:hover td:last-child{background:#f8fafc}
 
 /* Bump on every release. Shown under Rates & Data so a counter machine can be
    checked against the released version without opening the file. */
-var APP_VERSION = "1.2.0";
+var APP_VERSION = "1.2.1";
 
 /* SITE DETAILS - PLACEHOLDERS.
    The tax registration number and bank account details are site configuration,
@@ -2583,9 +2583,16 @@ var SH_KEEP_DAYS = 30;
 var SH = { items: [] };
 var AWB_LOOKUP = {};   /* per advice form: re-runs its AWB lookup after an import */
 
+/* A browser that has never held a Shipment Database - a first open - starts
+   with the sample shipments, so the AWB-first advices have something to fill in.
+   Once the key exists, even holding no shipments after Clear Loaded Shipments,
+   nothing is loaded again (decision D-15). */
 function shLoad(){
   SH = { items: [] };
-  try{ var r = localStorage.getItem(SH_KEY); if(r){ var o = JSON.parse(r); if(o && o.items) SH = o; } }catch(e){}
+  var r = null;
+  try{ r = localStorage.getItem(SH_KEY); }catch(e){ return; }
+  if(r === null){ shImport(shDemoItems()); return; }
+  try{ var o = JSON.parse(r); if(o && o.items) SH = o; }catch(e){}
 }
 function shSave(){
   try{ localStorage.setItem(SH_KEY, JSON.stringify(SH)); return true; }

@@ -168,7 +168,7 @@ Treat all three as confidential business records:
   third-party tool, including AI assistants.
 - To reproduce a customer-specific bug, describe the *shape* of the data, or
   reproduce it against a demo record with the same characteristics.
-- To test the Shipment Database, use **Load Sample Shipments**, or build a manifest
+- To test the Shipment Database, use the sample shipments it opens with (**Load Sample Shipments** reloads them), or build a manifest
   from demo customers as `tests/specs/10-awb-first.spec.js` does. Never a real
   manifest, and never a screenshot of one.
 
