@@ -292,6 +292,49 @@ module.exports = {
       } finally { await app.close(); }
     },
 
+    "dates and times are mandatory, and a time missing from the manifest is left blank": async (h) => {
+      const noDeparture = row("780-30200101", "DWC", "NBO", "ZZ 180", "", "", "GEN", "Machinery Parts", "10", "100", h.SAMPLE_CUSTOMER.name);
+      const { app } = await withManifest(h, [noDeparture]);
+      try {
+        const toastAfter = async (sel) => {
+          await app.page.evaluate(() => { document.getElementById("toast").textContent = ""; });
+          await app.page.click(sel);
+          await app.page.waitForTimeout(250);
+          return text(app.page, "#toast");
+        };
+        const labels = (page) => app.page.$$eval("#p-" + page + " label", (l) => l.map((x) => x.textContent));
+
+        await h.tab(app.page, "Export Advice");
+        const exportLabels = await labels("export");
+        for (const name of ["Departure Time & Date *", "Acceptance Time & Date (RCS) *"])
+          h.assert(exportLabels.includes(name), name + " is marked mandatory");
+
+        await app.page.fill("#a_mawb", "780-30200101");
+        await app.page.waitForTimeout(200);
+        h.eq(await val(app.page, "a_t2"), "", "a departure time missing from the manifest is left blank, not set to now");
+        h.contains(await text(app.page, "#a_awbstatus"), "departure time is not on the manifest", "the status says so");
+        await h.fillAdvice(app.page, "export", { bill: h.SAMPLE_CUSTOMER.name });
+        h.contains(await toastAfter("#a_save"), "Departure time & date is required", "save is refused without a departure time");
+        h.contains(await toastAfter("#a_preview"), "Departure time & date is required", "so is preview");
+        h.contains(await toastAfter("#a_print"), "Departure time & date is required", "and print");
+
+        await app.page.fill("#a_t2", "2026-09-20T09:00");
+        await app.page.fill("#a_t1", "");
+        h.contains(await toastAfter("#a_save"), "Acceptance time & date (RCS) is required", "the acceptance time is mandatory too");
+        h.eq((await h.db(app.page)).entries.length, 0, "nothing reached the register");
+
+        await app.page.fill("#a_t1", "2026-09-20T06:00");
+        h.contains(await h.saveAdvice(app.page, "export"), "Invoice saved", "with both times entered it saves");
+
+        await h.tab(app.page, "Import Advice");
+        const importLabels = await labels("import");
+        for (const name of ["RCF Time & Date (Received at SH Facility) *", "Delivery Time & Date *"])
+          h.assert(importLabels.includes(name), name + " is marked mandatory");
+        await h.fillAdvice(app.page, "import", { cust: h.OTHER_CUSTOMER.name, mawb: "780-30299901", wt: 50, pcs: 2, t2: "" });
+        h.contains(await toastAfter("#i_save"), "Delivery time & date is required", "the import delivery time is mandatory");
+      } finally { await app.close(); }
+    },
+
     "an AWB that is not in the database is left for manual entry, and saves": async (h) => {
       const { app } = await withManifest(h, [exportRow(h)]);
       try {
@@ -434,6 +477,50 @@ module.exports = {
         h.notContains(doc, "AWB Owner", "the AWB owner is not printed");
         h.notContains(doc, h.SAMPLE_CUSTOMER.name, "nor is its name");
         h.notContains(doc, "Customer TRN", "the old customer TRN label is gone");
+      } finally { await app.close(); }
+    },
+
+    "the printed advice is white, in the company blue and green": async (h) => {
+      const app = await h.openApp();
+      try {
+        await h.fillAdvice(app.page, "export", {
+          cust: h.SAMPLE_CUSTOMER.name, mawb: "780-30200091", wt: 100, pcs: 5, bill: h.BILLING_CUSTOMER.name });
+        await app.page.click("#a_preview");
+        await app.page.waitForTimeout(300);
+        const s = await app.page.evaluate(() => {
+          const doc = document.querySelector("#mBody .doc");
+          const style = (sel) => getComputedStyle(doc.querySelector(sel));
+          const fills = [...doc.querySelectorAll("*")].map((el) => getComputedStyle(el).backgroundColor)
+            .filter((c) => c !== "rgba(0, 0, 0, 0)" && c !== "rgb(255, 255, 255)");
+          return {
+            branded: doc.classList.contains("adv"),
+            title: style(".title").color,
+            headings: style(".items th").color,
+            labels: style(".meta td.l").color,
+            total: style(".items tr.tot td").color,
+            stripe: style(".greenrule").borderTopColor,
+            totalStripe: style(".items tr.tot td").borderBottomColor,
+            fills: [...new Set(fills)],
+          };
+        });
+        const BLUE = "rgb(16, 66, 255)", GREEN = "rgb(0, 255, 87)";
+        h.assert(s.branded, "the advice carries the company style");
+        h.eq(s.title, BLUE, "title in company blue");
+        h.eq(s.headings, BLUE, "charge table headings in company blue");
+        h.eq(s.labels, BLUE, "field labels in company blue");
+        h.eq(s.total, BLUE, "total in company blue");
+        h.eq(s.stripe, GREEN, "a green stripe under the header");
+        h.eq(s.totalStripe, GREEN, "and under the total");
+        h.eq(s.fills.join(", "), "", "no dark or coloured fills: the advice is white");
+      } finally { await app.close(); }
+    },
+
+    "the live animals charge is named without Aviation": async (h) => {
+      const app = await h.openApp();
+      try {
+        const labels = await app.page.$$eval("#a_optsel option, #i_optsel option", (o) => o.map((x) => x.textContent));
+        h.assert(labels.includes("Live Animals (AVI) Handling"), "the export charge has its new name");
+        h.eq(labels.filter((t) => /aviation/i.test(t)).join(", "), "", "no charge mentions Aviation");
       } finally { await app.close(); }
     },
 

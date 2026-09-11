@@ -11,7 +11,7 @@ The advice tabs now start from the AWB. The day's manifest is pasted into a new
 Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
 company invoiced is chosen separately from the company the AWB is booked under.
 
-Verified by the regression suite (78 cases) and a pixel comparison of every other
+Verified by the regression suite (81 cases) and a pixel comparison of every other
 tab's panel against 1.1.0.
 
 ### Added
@@ -56,7 +56,7 @@ tab's panel against 1.1.0.
   outside the master. Required to preview, print and save.
 - Migration **M3**: invoices saved before the billing party existed are billed to
   their customer.
-- `tests/specs/10-awb-first.spec.js` (25 cases), `tests/specs/11-customer-database.spec.js`
+- `tests/specs/10-awb-first.spec.js` (28 cases), `tests/specs/11-customer-database.spec.js`
   (3 cases), and a migration case in `09-migrations.spec.js`.
 - `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files, because
   shipment manifests name customers and shipments.
@@ -73,6 +73,19 @@ tab's panel against 1.1.0.
   `billAddr`; `acct` and `addr` now mirror the billing TRN and address, so a backup
   still prints correctly if restored into 1.1.0.
 - `APP_VERSION` is 1.2.0.
+- **The printed advice is white, in the company colours:** blue `#1042FF`
+  (RGB 16, 66, 255) for the title, headings, labels, total and table lines, and
+  a green `#00FF57` (RGB 0, 255, 87) stripe under the header and under the total.
+  The dark filled bars are gone. Colour is carried by lines rather than fills, so
+  it prints even with background graphics turned off. The shift handover report
+  keeps its previous style.
+- The export charge "Aviation / Live Animals (AVI) Handling" is now **Live
+  Animals (AVI) Handling**. Rate, minimum and VAT are unchanged.
+- **Dates and times are mandatory** on both advices and marked with an asterisk:
+  acceptance and departure on the Export Advice, RCF and delivery on the Import
+  Advice. An advice cannot be previewed, printed or saved without them. A
+  departure or RCF time missing from the manifest is left blank to be entered,
+  rather than defaulting to the current time.
 - **This is a prototype on demo customer data** (decision D-11). Customer TRNs and
   addresses exist only for the demo companies, so builds from 1.1.0 are not for
   counter rollout; the real customer master belongs in the ERP. Recorded as audit

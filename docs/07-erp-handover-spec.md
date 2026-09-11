@@ -92,8 +92,8 @@ Cash + Card requires an explicit split.
 **Output:** a saved invoice in the register, plus a printed advice in the copies
 listed in section 1.
 
-**Validation on save:** the AWB, the AWB owner, the billing party, gross weight and
-pieces are mandatory, and
+**Validation on save:** the AWB, the AWB owner, the billing party, both timestamps,
+gross weight and pieces are mandatory, and
 at least one charge line must be billable. If entered payment amounts do not
 reconcile to the invoice total, the user is warned but the save proceeds.
 

@@ -155,7 +155,7 @@ charge cannot be added twice (deduped by catalogue id).
 | AWB Cancellation / Rebooking / Return (Pre-Build-Up) | 225.00 | 225.00 | 5% |
 | AWB Cancellation / Rebooking / Return (Post-Build-Up) | 0.15 /kg | 450.00 | 5% |
 | AWB Amendment Fee (After Handover) | 172.00 | 172.00 | 0% |
-| Aviation / Live Animals (AVI) Handling | 258.00 | 258.00 | 0% |
+| Live Animals (AVI) Handling | 258.00 | 258.00 | 0% |
 | Cargo Cartage — Inbound to Warehouse | 30.00 | 30.00 | 0% |
 | Cargo Brokering / Agency Fee | 100.00 | 100.00 | 0% |
 | Air Waybill & Documentation (Additional) | 25.00 | 25.00 | 0% |
@@ -243,8 +243,8 @@ in at the start of the window.
 ## 7. Downstream consequences of saving
 
 `saveAdvice()` validates the AWB - including that it is not a shipment of the
-other direction - the AWB owner, the billing party, weight, pieces and at least
-one charge line, allocates the reference, then:
+other direction - the AWB owner, both timestamps, the billing party, weight,
+pieces and at least one charge line, allocates the reference, then:
 
 1. Pushes the invoice into `DB.entries` with `type: "invoice"`.
 2. **Export only:** auto-joins the lying list, keyed `"LLA" + invoiceId`, using the
@@ -299,7 +299,8 @@ Typing an AWB on an advice fills in its shipment from the Shipment Database.
   nature of goods, pieces and gross weight, plus the departure time on an export
   (the second timestamp) or the RCF time on an import (the first). The counter's
   own timestamp - acceptance on an export, delivery on an import - is never
-  touched. A value missing from the manifest is left blank to be entered, and an
+  touched. A value missing from the manifest - including the departure or RCF time,
+  which is never defaulted to the current time - is left blank to be entered, and an
   SHC code the application does not know is not applied. A sheet with no gross
   weights at all, or no weight column, is flagged in the preview before importing.
   Gross weight is read from its usual headings (Gross Weight, Gross Wt, GW,

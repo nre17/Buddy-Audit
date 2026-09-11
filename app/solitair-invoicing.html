@@ -186,6 +186,22 @@ table.reg tbody tr:hover td:last-child{background:#f8fafc}
 .doc .items tr.tot2 td{background:#f3f4f6;font-weight:700;border-top:1.5px solid #111827}
 .doc.rep .items td{padding:1.5px 4px;font-size:9px}
 .doc.rep .meta td{font-size:9px}
+/* the charge advice: white, in the company colours. Blue #1042FF (16,66,255)
+   for the title, headings, labels, total and lines; green #00FF57 (0,255,87)
+   only as stripes, because it is too light to read as text on white. Colour is
+   carried by borders, not fills, so it prints even with background graphics
+   turned off. The shift handover report (.doc.rep) keeps its own style. */
+.doc.adv .dh{border-bottom:3px solid #1042FF}
+.doc.adv .greenrule{height:0;background:none;border-top:3px solid #00FF57;margin-bottom:4px}
+.doc.adv .copyname{color:#1042FF}
+.doc.adv .title{background:#fff;color:#1042FF;border-top:2px solid #1042FF;border-bottom:2px solid #1042FF}
+.doc.adv .meta td{border-color:#c7d2fe}
+.doc.adv .meta td.l{background:#fff;color:#1042FF}
+.doc.adv .items th{background:#fff;color:#1042FF;border:1px solid #c7d2fe;border-bottom:2px solid #1042FF}
+.doc.adv .items td{border-color:#c7d2fe}
+.doc.adv .items tr.tot td{background:#fff;color:#1042FF;border-top:2px solid #1042FF;border-bottom:3px solid #00FF57}
+.doc.adv .sig td,.doc.adv .bank td{border-color:#c7d2fe}
+.doc.adv .foot{border-top:2px solid #00FF57}
 
 /* ===== Modal ===== */
 .modal{display:none;position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:100;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
@@ -2803,7 +2819,10 @@ function wireAwbLookup(mode, recalc){
     if(x.org) set("org", x.org);
     if(x.dst) set("dst", x.dst);
     set("fltno", x.fltno);
-    if(when) set(TIME, when);
+    /* a departure or RCF time missing from the manifest is left blank to be
+       entered - never left at the form's default of now, which storage charges
+       would then be calculated from */
+    set(TIME, when || "");
     if(x.shc && shcKnown(x.shc)) set("shc", x.shc);
     set("nog", x.nog); set("pcs", x.pcs); set("wt", x.wt);
     filled = x.key;
@@ -2813,7 +2832,7 @@ function wireAwbLookup(mode, recalc){
     if(x.cust && !shInMaster(x.cust)) notes.push("the AWB owner is not in the customer master");
     if(x.wt == null) notes.push("gross weight is not on the manifest, enter it below");
     if(x.shc && !shcKnown(x.shc)) notes.push("SHC " + esc(x.shc) + " is not a known code, choose one below");
-    if(!when) notes.push((isExp ? "departure" : "RCF") + " time is not on the manifest");
+    if(!when) notes.push((isExp ? "departure" : "RCF") + " time is not on the manifest, enter it below");
     shStatus(p, notes.length ? "warn" : "ok",
       "Shipment found" + (x.fltno ? " &middot; " + esc(x.fltno) : "")
       + (when ? " &middot; " + (isExp ? "departs " : "RCF ") + esc(shWhen(when)) : "")
@@ -3137,8 +3156,8 @@ function buildAdvice(mode){
   h += fld("Flight No.", '<input id="'+p+'_fltno" placeholder="e.g. 8G 401" '+IN+'>');
   h += fld("SHC Code *", sel(p+"_shc", CFG.shcCodes.map(function(s){ return s.c; }), null, "GEN"), "req");
   /* the time that comes from the manifest first (departure / RCF), then the one the counter records */
-  h += fld(isExp?"Departure Time & Date":"RCF Time & Date (Received at SH Facility)", '<input id="'+p+'_'+(isExp?"t2":"t1")+'" type="datetime-local" value="'+nowLocalDT()+'" '+IN+'>');
-  h += fld(isExp?"Acceptance Time & Date (RCS)":"Delivery Time & Date", '<input id="'+p+'_'+(isExp?"t1":"t2")+'" type="datetime-local" value="'+nowLocalDT()+'" '+IN+'>');
+  h += fld(isExp?"Departure Time & Date *":"RCF Time & Date (Received at SH Facility) *", '<input id="'+p+'_'+(isExp?"t2":"t1")+'" type="datetime-local" value="'+nowLocalDT()+'" class="req" '+IN+'>');
+  h += fld(isExp?"Acceptance Time & Date (RCS) *":"Delivery Time & Date *", '<input id="'+p+'_'+(isExp?"t1":"t2")+'" type="datetime-local" value="'+nowLocalDT()+'" class="req" '+IN+'>');
   h += fld("Pieces *", '<input id="'+p+'_pcs" type="number" step="1" min="0" placeholder="0" class="req" '+IN+'>');
   h += fld("Gross Weight (kg) *", '<input id="'+p+'_wt" type="number" step="0.01" min="0" placeholder="0.00" class="req" '+IN+'>');
   h += fld("Nature of Goods", '<input id="'+p+'_nog" placeholder="e.g. General Cargo / Fresh Produce / Live Animals" '+IN+'>');
@@ -3711,6 +3730,8 @@ function adviceProblem(e){
   if(dir && dir !== e.mode)
     return "AWB " + shipment.awb + " is an " + dir.toLowerCase() + " shipment. Raise it on the " + dir + " Advice.";
   if(!e.cust) return "AWB owner is required";
+  if(!e.t1) return (e.mode === "Export" ? "Acceptance time & date (RCS)" : "RCF time & date") + " is required";
+  if(!e.t2) return (e.mode === "Export" ? "Departure time & date" : "Delivery time & date") + " is required";
   if(!e.billTo) return "Billing party is required";
   return "";
 }
@@ -4117,7 +4138,7 @@ function docCopy(e, copyName){
   var isExp = e.mode==="Export";
   var C = CFG.company;
   var bill = billingOf(e);
-  var h = '<div class="doc">';
+  var h = '<div class="doc adv">';
   var mark = '<div class="logo"><img src="'+(DB.logo||LOGO_PRINT)+'" alt="SolitAir"></div>';
   h += '<div class="dh">' + mark
      + '<div style="text-align:right;font-size:8.5px;line-height:1.35">'+esc(C.name)+'<br>'+esc(C.addr)
@@ -4451,7 +4472,7 @@ var EXPORT_OPTIONAL = [
   {id:"ex_opt_cancel_pre", d:"AWB Cancellation / Rebooking / Return (Pre-Build-Up)", rate:225, min:225, kind:"each", vat:5},
   {id:"ex_opt_cancel_post", d:"AWB Cancellation / Rebooking / Return (Post-Build-Up, AED 450 base + per kg)", rate:0.15, min:450, kind:"kg", vat:5},
   {id:"ex_opt_amend", d:"AWB Amendment Fee (After Handover)", rate:172, min:172, kind:"each", vat:0},
-  {id:"ex_opt_aviation", d:"Aviation / Live Animals (AVI) Handling", rate:258, min:258, kind:"each", vat:0},
+  {id:"ex_opt_aviation", d:"Live Animals (AVI) Handling", rate:258, min:258, kind:"each", vat:0},
   {id:"ex_opt_cartage", d:"Cargo Cartage - Inbound to Warehouse", rate:30, min:30, kind:"each", vat:0},
   {id:"ex_opt_brokering", d:"Cargo Brokering / Agency Fee", rate:100, min:100, kind:"each", vat:0},
   {id:"ex_opt_doc", d:"Air Waybill & Documentation (Additional)", rate:25, min:25, kind:"each", vat:0},

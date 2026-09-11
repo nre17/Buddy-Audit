@@ -216,6 +216,7 @@ invoices keep the name they were raised under.
 | "Blocked. AWB ... is an import shipment" on the Export Advice, or the reverse | The AWB is on the manifest for the other direction, so the advice cannot be saved there | Click **Open in Import Advice** (or Export) and raise it there |
 | Departure or RCF times are out by about a month | The manifest's day and month were read the wrong way round | Clear the loaded shipments, paste again, and set *Dates in this sheet are written* in the preview |
 | "Billing party is required" | No billing party chosen | Choose one at the bottom of the advice, or click **Same as AWB owner** |
+| "Departure time & date is required" (or acceptance, RCF or delivery) | That time is blank - the manifest may not have had it | Enter the time on the advice |
 | Register is empty after an update | Different browser, or a different browser profile, from the one holding the data - not the file's name or location | Open the app in the browser the counter normally uses. If it is genuinely gone, restore from backup |
 | Sample or unfamiliar invoices appear in the register | A second copy of the app was opened in the same browser and seeded with demo data (audit A-20) | Delete the demo rows, re-check Cash on Hand and the opening balance, and restore from backup if the figures do not reconcile |
 | "Could not save" toast | localStorage is full or blocked | Back up immediately, then see audit A-04. Do not keep working |
