@@ -28,8 +28,9 @@ tab's panel against 1.1.0.
 - **Customer Database tab**, second in the tab bar: the demo customer master the
   advices use for the AWB owner, the billing party and its TRN and address,
   searchable by name, TRN, city, country or email. Every demo customer now has a
-  fake TRN and a full address, and the billing party picker lists exactly these
-  customers.
+  fake TRN and a full address, and both the AWB owner and billing party pickers
+  list exactly these customers. Names held in a browser's saved data from earlier
+  use are never offered.
 - **Date order detection** for manifest dates. Any number above 12 settles
   day-first or month-first; when every date is ambiguous, the reading with the
   shorter span wins and the preview says it is not certain. The order can be set

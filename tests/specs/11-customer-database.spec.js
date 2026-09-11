@@ -42,31 +42,41 @@ module.exports = {
       } finally { await app.close(); }
     },
 
-    "every customer has a TRN and an address, and the billing party list is exactly the database": async (h) => {
-      const app = await h.openApp();
+    "both pickers list exactly the Customer Database, whatever the browser has saved": async (h) => {
+      // A browser used before may hold other customer names in its saved data.
+      // Placeholder names stand in for them here; they must never be offered.
+      const seeded = { solitair_db: {
+        openingBalance: 0, openingNote: "", openingDate: "", entries: [], seq: { export: 0, import: 0 },
+        customers: ["Placeholder Saved Name One", "Placeholder Saved Name Two"], staff: "Counter 1",
+        rates: {}, logo: null, sec: [] } };
+      const app = await h.openApp({ seed: seeded });
       try {
-        // An AWB owner typed by hand is remembered for the owner picker, but must
-        // not find its way into the billing party list.
         await h.fillAdvice(app.page, "export", {
           cust: "an owner typed by hand", mawb: "780-30210001", wt: 100, pcs: 5, bill: h.BILLING_CUSTOMER.name });
         h.contains(await h.saveAdvice(app.page, "export"), "Invoice saved", "saved");
         const r = await app.page.evaluate(() => {
           const names = CUSTOMERS.map((c) => c.name);
-          const billing = [...document.querySelectorAll("#a_billlist option")].map((o) => o.value);
+          const opts = (id) => [...document.querySelectorAll("#" + id + " option")].map((o) => o.value);
+          const isDatabase = (list) => list.length === names.length && list.every((n, i) => n === names[i]);
           return {
             total: CUSTOMERS.length,
             withTrn: CUSTOMERS.filter((c) => /^\d{15}$/.test(c.trn)).length,
             uniqueTrn: new Set(CUSTOMERS.map((c) => c.trn)).size,
             withAddress: CUSTOMERS.filter((c) => String(c.addr).trim() && String(c.city).trim()).length,
-            billingIsDatabase: billing.length === names.length && billing.every((n, i) => n === names[i]),
-            ownerRemembered: [...document.querySelectorAll("#a_custlist option")].some((o) => o.value === "an owner typed by hand"),
+            bothAdvices: isDatabase(opts("a_custlist")) && isDatabase(opts("i_custlist")),
+            shared: ["a", "i"].every((p) =>
+              document.getElementById(p + "_cust").getAttribute("list") === document.getElementById(p + "_bill").getAttribute("list")),
+            savedNamesOffered: ["a_custlist", "i_custlist"].some((id) => opts(id).some((n) => n.indexOf("Placeholder Saved Name") === 0)),
+            typedOwnerOffered: opts("a_custlist").includes("an owner typed by hand"),
           };
         });
         h.eq(r.withTrn, r.total, "every customer has a 15-digit TRN");
         h.eq(r.uniqueTrn, r.total, "no two customers share a TRN");
         h.eq(r.withAddress, r.total, "every customer has an address and a city");
-        h.assert(r.billingIsDatabase, "the billing party list is exactly the Customer Database, in order");
-        h.assert(r.ownerRemembered, "a hand-typed AWB owner is still remembered for the owner picker");
+        h.assert(r.bothAdvices, "the pickers on both advices list exactly the Customer Database, in order");
+        h.assert(r.shared, "the AWB owner and billing party pickers share that one list");
+        h.assert(!r.savedNamesOffered, "names held in the browser's saved data are never offered");
+        h.assert(!r.typedOwnerOffered, "an AWB owner typed by hand is not added to the list");
       } finally { await app.close(); }
     },
   },

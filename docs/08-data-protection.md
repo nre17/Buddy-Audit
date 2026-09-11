@@ -35,8 +35,8 @@ The generator is self-contained: every value is invented, and every proportion
 is a constant declared at the top of the file. It takes no input.
 
 Every customer has a fake tax registration number and a full address, so any
-customer chosen as a billing party shows both on the advice, and the billing
-party picker lists exactly these customers. Contact details stay patchy - some
+customer chosen as a billing party shows both on the advice, and both the AWB owner and billing party pickers list exactly these customers -
+never names held in a browser's saved data from earlier use. Contact details stay patchy - some
 customers have no landline, mobile or email - and telephone numbers are formatted
 inconsistently, so the application is still exercised against untidy data.
 

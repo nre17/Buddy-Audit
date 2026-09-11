@@ -2221,7 +2221,7 @@ function refreshCustList(){
   ["a_custlist","i_custlist"].forEach(function(id){
     var dl = document.getElementById(id);
     if(dl){
-      dl.innerHTML = DB.customers.map(function(n){ return '<option value="'+esc(n)+'">'; }).join("");
+      dl.innerHTML = CUSTOMERS.map(function(c){ return '<option value="'+esc(c.name)+'">'; }).join("");
     }
   });
 }
@@ -3146,10 +3146,8 @@ function buildAdvice(mode){
   h += fld("HAWB Qty (if applicable)", '<input id="'+p+'_hawbqty" type="number" step="1" min="0" placeholder="0" '+IN+'>');
   h += '</div>';
 
-  /* the AWB owner picker lists the customer master plus owners typed before;
-     the billing party picker lists exactly the Customer Database */
+  /* one list for both pickers: exactly the Customer Database */
   h += '<datalist id="'+p+'_custlist"></datalist>';
-  h += '<datalist id="'+p+'_billlist"></datalist>';
 
   /* staff - stands alone, full width */
   h += '<div class="fgrid" style="grid-template-columns:1fr">';
@@ -3160,7 +3158,7 @@ function buildAdvice(mode){
      the only customer TRN and address on the form, and the ones that print ---- */
   h += '<div class="billband"><div class="bandtitle">Billing Party</div><div class="billgrid">';
   h += fld("Billing Party *", '<div style="display:flex;gap:6px">'
-     + '<input id="'+p+'_bill" list="'+p+'_billlist" autocomplete="off" placeholder="Type to search '+CUSTOMERS.length.toLocaleString("en-US")+' customers" class="req" '+IN+'>'
+     + '<input id="'+p+'_bill" list="'+p+'_custlist" autocomplete="off" placeholder="Type to search '+CUSTOMERS.length.toLocaleString("en-US")+' customers" class="req" '+IN+'>'
      + '<button class="btn sm" id="'+p+'_bill_same" type="button" title="Bill the company the AWB is booked under" style="white-space:nowrap">Same as AWB owner</button></div>');
   h += fld("Billing Party TRN", '<input id="'+p+'_bill_trn" '+IN+'>');
   h += fld("Billing Party Address", '<input id="'+p+'_bill_addr" '+IN+'>');
@@ -3274,22 +3272,11 @@ function buildAdvice(mode){
   /* ---- wire up: populate datalist + attach handlers ---- */
   pg.innerHTML = h;
 
-  /* populate customer datalist from DB.customers (or CUSTOMERS master) */
+  /* both pickers - AWB owner and billing party - list exactly the Customer
+     Database. Names held in this browser's saved data from earlier use are never
+     offered, so the prototype can only ever show its demo customers. */
   var dl = $((isExp?"a":"i")+"_custlist");
-  if(dl){
-    var list = DB.customers && DB.customers.length ? DB.customers : [];
-    if(!list.length && CUSTOMERS && CUSTOMERS.length){
-      /* seed from the master */
-      DB.customers = CUSTOMERS.map(function(c){ return c.name; });
-      list = DB.customers;
-    }
-    dl.innerHTML = list.map(function(n){ return '<option value="'+esc(n)+'">'; }).join("");
-  }
-
-  /* the billing party picker lists exactly the Customer Database, so a party
-     picked from it always has the TRN and address the advice prints */
-  var billList = $((isExp?"a":"i")+"_billlist");
-  if(billList) billList.innerHTML = CUSTOMERS.map(function(c){ return '<option value="'+esc(c.name)+'">'; }).join("");
+  if(dl) dl.innerHTML = CUSTOMERS.map(function(c){ return '<option value="'+esc(c.name)+'">'; }).join("");
 
   /* billing party picker -> its TRN and address */
   wireBillingParty(mode);
@@ -3753,9 +3740,6 @@ function saveAdvice(mode){
   e.type = "invoice";
 
   DB.entries.push(e);
-  /* remember an AWB owner typed by hand, for the owner picker; the billing
-     party picker always lists exactly the Customer Database */
-  if(e.cust && DB.customers.indexOf(e.cust) < 0) DB.customers.push(e.cust);
   save();
   toast("Invoice saved: "+e.ref+"  |  "+e.cust+"  |  AED "+money(e.total),"ok");
 

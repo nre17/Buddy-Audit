@@ -109,9 +109,11 @@ The data is already in the file. Persisting a copy adds roughly 50 KB to every
 write, consumes quota that real invoices need, and means a stale customer list can
 outlive a file update.
 
-**Fix:** derive the datalist from `CUSTOMERS` at render time, and keep in
-`DB.customers` only names staff typed that are not in the master. Requires a
-migration to prune existing stored copies.
+**Since 1.2.0** both pickers are built from `CUSTOMERS` when the form is built,
+and `DB.customers` is offered nowhere, so it is now only a storage cost.
+
+**Fix:** stop writing it (`seedCustomers`, `seedDemo`) and add a migration that
+deletes stored copies.
 
 ---
 

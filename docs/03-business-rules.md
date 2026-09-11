@@ -266,13 +266,14 @@ keeps the two apart.
 | | AWB owner | Billing party |
 |---|---|---|
 | Field | `cust` | `billTo`, `billTrn`, `billAddr` |
-| Comes from | The Shipment Database, or typed | The Customer Database - the picker lists exactly its customers; **Same as AWB owner** copies the owner |
+| Comes from | The Shipment Database, or picked from the Customer Database | The Customer Database; **Same as AWB owner** copies the owner |
 | On the printed advice | Not printed - shown on the form only | Billing Party, Billing Party TRN, Billing Party Address |
 | Reported on by | Register, Dashboard, Shift Handover, exports | The printed advice |
 | Required | Yes | Yes |
 
-The printed advice names only the billing party, with its TRN and address; the
-AWB owner is not printed. The billing party is **never filled in automatically**: an unnoticed
+Both pickers list exactly the Customer Database; names held in a browser's saved
+data from earlier use are never offered. The printed advice names only the
+billing party, with its TRN and address; the AWB owner is not printed. The billing party is **never filled in automatically**: an unnoticed
 default would put the charges on the wrong company's tax document.
 
 If the billing party is changed to a name that is not in the customer master, the

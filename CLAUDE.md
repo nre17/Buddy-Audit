@@ -40,7 +40,7 @@ change as carefully as a change to a live finance system.
 
 | In the repo | What it is |
 |---|---|
-| `CUSTOMERS` (the large array near the top) | 1,892 fictional companies from `tools/generate-customers.py`, each with a fake TRN and address. Listed on the Customer Database tab, and exactly what the billing party picker offers. Emails use the reserved `.example` TLD, phone numbers contain `555`. |
+| `CUSTOMERS` (the large array near the top) | 1,892 fictional companies from `tools/generate-customers.py`, each with a fake TRN and address. Listed on the Customer Database tab, and exactly what the AWB owner and billing party pickers offer. Emails use the reserved `.example` TLD, phone numbers contain `555`. |
 | `CFG.bank`, `CFG.company.trn` | The literal string `"Not configured"`. Site configuration, entered per machine under Rates & Data, held in that browser only. |
 | `CFG.staff` | `Counter 1` … `Counter 6`. |
 | Sample-data seed, fixtures | Generated customers; air waybills in the reserved `780-3090xxxx` band. |
@@ -81,6 +81,8 @@ Full policy: `docs/08-data-protection.md`.
 - The **billing party** is `billTo` / `billTrn` / `billAddr`. Its TRN and address
   are the only ones on the form, and it is the only party printed on the advice
   (`billingOf()`). The AWB owner is never printed.
+- Both pickers list exactly `CUSTOMERS`. `DB.customers` is offered nowhere: a
+  browser used before may hold other customer names in it.
 - `acct` and `addr` are legacy mirrors of `billTrn` / `billAddr`, kept so a backup
   still prints correctly if restored into an earlier version. Keep writing them.
 - Shipments (`SH`, key `solitair_shipments_v1`) are a lookup table, not a record.
