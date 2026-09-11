@@ -6,10 +6,11 @@ Project instructions for Claude Code. Read this fully before touching any file.
 
 A single-file, offline, browser-based charge advice and invoicing system for the
 cargo counter at SolitAir Cargo Express Services DWC-LLC (Dubai World Central).
-It is **in daily production use by counter staff.** Treat every change as a change
-to a live finance system.
+It is a **prototype** for demonstration and the ERP handover, running on demo
+data, but its charge logic is what the ERP will be specified from. Treat every
+change as carefully as a change to a live finance system.
 
-- The entire application is one file: `app/solitair-invoicing.html` (~4,980 lines).
+- The entire application is one file: `app/solitair-invoicing.html` (~5,700 lines).
 - No build step. No server. No npm dependencies at runtime.
 - It is opened by double-clicking the file (`file://` protocol) in a browser.
 - All data persists to **browser `localStorage` only**. There is no database.
@@ -25,7 +26,7 @@ to a live finance system.
    you MUST add a backfill migration in `load()` (see `docs/02-data-model.md` for
    the two existing migrations and the pattern to follow).
 3. **Never edit the file by re-typing large regions.** It contains a
-   56,000-character single line (the embedded logo, around line 3640) and about
+   56,000-character single line (the embedded logo) and about
    1,900 lines of customer master data. Use targeted, surgical edits (see
    "How to edit" below).
 4. **Run the test suite before and after every change.** `npm test`. A change that
@@ -39,11 +40,12 @@ to a live finance system.
 
 | In the repo | What it is |
 |---|---|
-| `CUSTOMERS` (the large array near the top) | 1,892 fictional companies from `tools/generate-customers.py`. Emails use the reserved `.example` TLD, phone numbers contain `555`. |
+| `CUSTOMERS` (the large array near the top) | 1,892 fictional companies from `tools/generate-customers.py`, each with a fake TRN and address. Listed on the Customer Database tab, and exactly what the AWB owner and billing party pickers offer. Emails use the reserved `.example` TLD, phone numbers contain `555`. |
 | `CFG.bank`, `CFG.company.trn` | The literal string `"Not configured"`. Site configuration, entered per machine under Rates & Data, held in that browser only. |
 | `CFG.staff` | `Counter 1` … `Counter 6`. |
 | Sample-data seed, fixtures | Generated customers; air waybills in the reserved `780-3090xxxx` band. |
 | `EXPORT_LINES` / `IMPORT_LINES` | The genuine commercial tariff. Confidential, but not personal data. |
+| Shipment Database (`solitair_shipments_v1`) | Nothing in the repo. Manifests are pasted on the counter machine; demo shipments come from `shDemoItems()` in the reserved `780-3090xxxx` band. |
 
 ### Rules
 
@@ -57,6 +59,8 @@ to a live finance system.
 - **Run `npm run scan` before you commit.** It runs in CI and will fail the
   build. It is the control that keeps the statement at the top of this section
   true.
+- Never commit a shipment manifest (`.csv`, `.tsv`, `.xlsx`, `.xls`). They name
+  customers and shipments; `.gitignore` and CI block them.
 - Never commit a `localStorage` export from a counter machine. `.gitignore`
   blocks `*.backup.json` and `data/`.
 - Keep the repository private regardless. The tariff is confidential.
@@ -69,6 +73,20 @@ If you regenerate the customer master, commit the regenerated
 replace the `CUSTOMERS` array in the app in the same change.
 
 Full policy: `docs/08-data-protection.md`.
+
+### Invariants on the advice record
+
+- `cust` is the **AWB owner**. The Register, Dashboard, Shift Handover and the
+  exports all report on it. Do not repurpose it.
+- The **billing party** is `billTo` / `billTrn` / `billAddr`. Its TRN and address
+  are the only ones on the form, and it is the only party printed on the advice
+  (`billingOf()`). The AWB owner is never printed.
+- Both pickers list exactly `CUSTOMERS`. `DB.customers` is offered nowhere: a
+  browser used before may hold other customer names in it.
+- `acct` and `addr` are legacy mirrors of `billTrn` / `billAddr`, kept so a backup
+  still prints correctly if restored into an earlier version. Keep writing them.
+- Shipments (`SH`, key `solitair_shipments_v1`) are a lookup table, not a record.
+  They are outside `DB` and outside the backup on purpose. See docs/02-data-model.md.
 
 ## How to edit this file
 
@@ -135,11 +153,13 @@ npm run open    # print the file:// URL to open the app
 |---|---|
 | How it is put together, why single-file | `docs/01-architecture.md` |
 | Persisted shapes, migrations, storage keys | `docs/02-data-model.md` |
-| Tariff logic, auto-charge rules, VAT, storage | `docs/03-business-rules.md` |
+| Tariff logic, auto-charge rules, VAT, storage, AWB owner and billing party, shipment lookup | `docs/03-business-rules.md` |
 | Line-range map and function index | `docs/04-code-map.md` |
 | Known defects and tech debt, prioritised | `docs/05-audit-findings.md` |
 | Backup, recovery, deployment to staff | `docs/06-operations-runbook.md` |
 | Process spec written for the ERP vendor | `docs/07-erp-handover-spec.md` |
+| What data the repository may hold, and the guards | `docs/08-data-protection.md` |
+| Change classes, release and rollback, risks, decisions | `docs/09-governance.md` |
 
 ## Working agreement
 

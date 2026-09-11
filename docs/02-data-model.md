@@ -13,7 +13,7 @@ Two objects, two `localStorage` keys. Everything else is derived at render time.
   openingDate:    "",       // "YYYY-MM-DD"
   entries:        [],       // THE LEDGER. invoices and cash handovers. see below
   seq:            { export: 0, import: 0 },   // invoice reference counters
-  customers:      [],       // names only, seeded from the CUSTOMERS master
+  customers:      [],       // names only; offered in no picker since 1.2.0 (audit A-03)
   staff:          "Counter 1",  // currently signed-in counter staff
   rates:          {},       // per-line rate overrides from the Rates & Data tab
   logo:           null,     // data: URI if a custom logo was uploaded, else null
@@ -60,10 +60,13 @@ The record produced by `collectAdvice()` and stamped by `saveAdvice()`.
 | `ref` | string | `"YYYY-MM-DD/NN"`. See audit **A-02** — `NN` does not reset daily. |
 | `date` | string | `"YYYY-MM-DD"`, used by every date filter |
 | `ts` | string | ISO timestamp, used by the handover shift window |
-| `cust` | string | Customer name |
-| `cust_trn`, `cust_country`, `cust_paymode` | string | Autofilled from the customer master |
-| `acct` | string | Customer TRN as printed on the advice. Autofilled from the customer master — see audit **A-06** for the bug where the phone number landed here instead. |
-| `addr` | string | Customer address |
+| `cust` | string | **The AWB owner**: the company the AWB is booked under. Filled from the Shipment Database or typed. The Register, Dashboard, Shift Handover and exports report on this. |
+| `cust_trn`, `cust_country`, `cust_paymode` | string | The AWB owner's values from the customer master |
+| `billTo` | string | **The billing party**: who the advice is invoiced to, chosen from the same customer master. Required. |
+| `billTrn` | string | Billing party TRN, as printed on the advice |
+| `billAddr` | string | Billing party address, as printed on the advice |
+| `acct` | string | Mirror of `billTrn`. Before 1.2.0 it held the customer TRN as printed; it is still written so a backup from 1.2.0 prints the right TRN if restored into an earlier version. |
+| `addr` | string | Mirror of `billAddr`, for the same reason |
 | `mawb`, `hawb` | string | Uppercased air waybill numbers |
 | `hawbqty` | number | Optional. Drives the per-HAWB data entry fee. |
 | `org`, `dst` | string | Origin / destination. Default `DWC` on the relevant side. |
@@ -149,9 +152,45 @@ lying-list entry from both `items` and `cleared`.
 
 ---
 
+## `SH` — key `solitair_shipments_v1`
+
+The Shipment Database: the day's manifest, loaded on the Shipment Database tab and
+looked up by AWB on both advice forms. Deliberately **not** part of `DB`. It is a
+copy of a document that exists elsewhere, so it is not rewritten on every invoice
+save and it is **not in the JSON backup**. After a restore, paste the manifest
+again.
+
+```js
+{
+  items: [{
+    awb:   "780-30901001",       // as written on the manifest, upper-cased
+    key:   "78030901001",        // digits only: what every lookup compares
+    org:   "DWC", dst: "ISU",    // upper-cased
+    fltno: "ZZ 901",
+    dep:   "2026-09-10T02:15",   // departure, datetime-local; "" when absent
+    rcf:   "",                   // received at facility; "" when absent
+    shc:   "GEN",
+    nog:   "Auto Spare Parts",
+    pcs:   24,                   // null when the manifest has no value
+    wt:    312.5,                // null when the manifest has no value
+    cust:  "...",                // the AWB owner, as written on the manifest
+    importedAt: 1788990614000    // ms since epoch
+  }]
+}
+```
+
+- **One entry per AWB.** Importing a row for an AWB already loaded replaces it.
+- **Retention.** Entries imported more than `SH_KEEP_DAYS` (30) days ago are
+  dropped at the next import.
+- **Direction is derived, not stored.** A departure time means export and an RCF
+  time means import; failing both, DWC as the origin or destination decides
+  (`shDirection()`).
+
+---
+
 ## Migrations
 
-Both run in `load()` (line ~2271) on every boot, are idempotent, and persist
+All three run in `load()` on every boot, are idempotent, and persist
 immediately so the fix-up happens once.
 
 ### M1 — backfill `entries[].type`
@@ -177,6 +216,16 @@ deleted the wrong row whenever the list was filtered.
 if(!x.id){ x.id = "SEC" + Date.now() + "_" + Math.floor(Math.random()*100000); }
 ```
 
+### M3 — backfill the billing party
+
+Invoices saved before 1.2.0 have no `billTo`. They were billed to the customer on
+the advice, so `load()` sets `billTo = cust`, `billTrn = acct` and
+`billAddr = addr`, leaving the original fields in place. `billingOf()` in the print
+code applies the same rule to a record that has not been through `load()` yet,
+such as one restored from a backup in the same session (audit A-21).
+
+Covered by `09-migrations.spec.js`.
+
 ### Writing a new migration
 
 1. Add the backfill to `load()`, inside the existing `if(o && o.entries)` block.
@@ -196,6 +245,7 @@ if(!x.id){ x.id = "SEC" + Date.now() + "_" + Math.floor(Math.random()*100000); }
 |---|---|
 | `DB.customers` (1,892 names) | ~50 KB, **rewritten on every save** — see audit A-03 |
 | `DB.logo` if a custom logo is uploaded | up to ~200 KB |
+| Shipment Database (`solitair_shipments_v1`) | ~250 bytes per shipment; a 30-day window at 150 shipments a day is about 1.1 MB |
 | Each invoice | ~1-2 KB |
 | Each saved handover report | ~5-10 KB (embeds a full figures snapshot) |
 

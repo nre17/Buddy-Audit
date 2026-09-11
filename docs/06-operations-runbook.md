@@ -39,6 +39,41 @@ they are also included in the daily backup.
 
 ---
 
+## 0a. Each day: load the manifest
+
+At the start of each day, or whenever a new manifest arrives:
+
+1. Open the manifest in Excel.
+2. Select it **including the heading row** - clicking the corner square at the top
+   left of the sheet selects everything - and copy.
+3. In the app, open **Shipment Database** (the first tab) and paste into the box.
+   The preview appears on its own; if not, click **Preview**.
+4. Check the preview:
+   - The number of exports and imports looks right.
+   - **The departure and RCF times are written out in words. Check the day and the
+     month are the right way round.** If they are not, change *Dates in this sheet
+     are written* before importing. Storage charges are calculated from these
+     times.
+   - Read the **Notes** column. An unknown SHC code, an owner not in the customer
+     master or a missing gross weight will each need attention on the advice.
+   - If the preview says the sheet has **no gross weights**, check its heading row
+     and weight column first; otherwise weights need typing on each advice.
+5. Click **Import**.
+
+Columns can be in any order; they are matched by their headings. A CSV file works
+too, through **Choose CSV File**. Pasting an updated manifest later replaces the
+shipments it contains and keeps the others.
+
+**On the advice:** start typing the AWB. Matching shipments are suggested under the
+field - click one, or type the AWB in full. The owner, flight, route, time, SHC,
+goods, pieces and weight fill in. Enter anything the manifest did not have, choose the **Billing
+Party** at the bottom - or click **Same as AWB owner** - and carry on as before.
+
+> Loaded shipments are **not** part of the daily backup. After a restore, paste the
+> manifest again.
+
+---
+
 ## 1. Daily backup — mandatory
 
 **Read `docs/05-audit-findings.md` A-01 first. This is the single largest risk in
@@ -78,6 +113,11 @@ buttons on that tab.
 ---
 
 ## 3. Rolling out a new version to staff
+
+> **Builds from 1.1.0 are a prototype, not for counter rollout.** They run on the
+> demo customer master shown on the Customer Database tab, so customer TRNs and
+> addresses fill in only for demo companies. The real customer master belongs in
+> the ERP. See decision D-11 in `09-governance.md`.
 
 > Company and bank details, staff names, tariff overrides and all invoice data
 > live in the browser, not in the HTML file. Replacing the file does not erase
@@ -172,6 +212,11 @@ invoices keep the name they were raised under.
 
 | Symptom | Cause | Action |
 |---|---|---|
+| An AWB does not fill in | Its manifest has not been loaded, or the AWB is typed differently | Search for the AWB on the Shipment Database tab. Load the manifest, or enter the details by hand |
+| "Blocked. AWB ... is an import shipment" on the Export Advice, or the reverse | The AWB is on the manifest for the other direction, so the advice cannot be saved there | Click **Open in Import Advice** (or Export) and raise it there |
+| Departure or RCF times are out by about a month | The manifest's day and month were read the wrong way round | Clear the loaded shipments, paste again, and set *Dates in this sheet are written* in the preview |
+| "Billing party is required" | No billing party chosen | Choose one at the bottom of the advice, or click **Same as AWB owner** |
+| "Departure time & date is required" (or acceptance, RCF or delivery) | That time is blank - the manifest may not have had it | Enter the time on the advice |
 | Register is empty after an update | Different browser, or a different browser profile, from the one holding the data - not the file's name or location | Open the app in the browser the counter normally uses. If it is genuinely gone, restore from backup |
 | Sample or unfamiliar invoices appear in the register | A second copy of the app was opened in the same browser and seeded with demo data (audit A-20) | Delete the demo rows, re-check Cash on Hand and the opening balance, and restore from backup if the figures do not reconcile |
 | "Could not save" toast | localStorage is full or blocked | Back up immediately, then see audit A-04. Do not keep working |

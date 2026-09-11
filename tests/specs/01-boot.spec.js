@@ -1,4 +1,4 @@
-/* Boot integrity: the app must build all eight tabs with no errors. */
+/* Boot integrity: the app must build all ten tabs with no errors. */
 module.exports = {
   name: "Boot & shell",
   tests: {
@@ -7,10 +7,10 @@ module.exports = {
       try { app.assertNoErrors(); } finally { await app.close(); }
     },
 
-    "builds all eight tab panels": async (h) => {
+    "builds all ten tab panels": async (h) => {
       const app = await h.openApp();
       try {
-        const ids = ["p-export","p-import","p-lying","p-register",
+        const ids = ["p-shipments","p-customers","p-export","p-import","p-lying","p-register",
                      "p-handover","p-dash","p-admin","p-security"];
         for (const id of ids) {
           const filled = await app.page.evaluate((id) => {

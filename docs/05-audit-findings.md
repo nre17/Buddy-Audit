@@ -22,6 +22,8 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-10](#a-10) | P2 | No responsive layout; unusable on a tablet or phone | L |
 | [A-15](#a-15) | P2 | Form-field styling is inlined in 22 places, overriding the CSS that already exists | M |
 | [A-20](#a-20) | **P1** | Every local copy of the app shares one data store, so a demo copy can write into the live register | S (process) + M (code) |
+| [A-21](#a-21) | P2 | Restoring a backup does not run the data migrations until the next reload | S |
+| [A-23](#a-23) | P3 | The storage manual override cannot be used, so an adjusted storage charge is never marked as one | S |
 
 ## Closed
 
@@ -34,6 +36,11 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-16](#a-16) | No version identifier in the application | `APP_VERSION` added and shown under Rates & Data. |
 | [A-18](#a-18) | `dayKey()` was a no-op and the reference expression was duplicated four times | Replaced by `refFor()` / `previewRef()`. A *tidying* fix — the underlying A-02 defect is still open, but now has one place to fix it. |
 | [A-19](#a-19) | Duplicated date formatting and dead CSS | `ymd()` helper introduced; six dead CSS rules removed. |
+| [A-22](#a-22) | No customer master with TRNs or addresses on a counter machine | **Accepted by decision D-11.** The application is a prototype on demo customer data, shown on the Customer Database tab; the real customer master belongs in the ERP. |
+| [A-24](#a-24) | An SHC code not in the list billed as general cargo | Fixed: it bills as special cargo, and several codes follow the class rule (decision D-14). |
+| [A-25](#a-25) | Dates read month-first on a US-English browser | Fixed: every date is shown and typed day-first (decision D-13). |
+| [A-26](#a-26) | Free-hour rules could not be set to zero, and the SHC reference ignored the saved hours | Fixed. |
+| [A-27](#a-27) | The import storage readout counted "since acceptance" | Fixed: it reads "since RCF". |
 
 All closures were verified by the 50-case regression suite plus a pixel-level
 screenshot comparison across all eight tabs, before and after. Rendering is
@@ -107,9 +114,11 @@ The data is already in the file. Persisting a copy adds roughly 50 KB to every
 write, consumes quota that real invoices need, and means a stale customer list can
 outlive a file update.
 
-**Fix:** derive the datalist from `CUSTOMERS` at render time, and keep in
-`DB.customers` only names staff typed that are not in the master. Requires a
-migration to prune existing stored copies.
+**Since 1.2.0** both pickers are built from `CUSTOMERS` when the form is built,
+and `DB.customers` is offered nowhere, so it is now only a storage cost.
+
+**Fix:** stop writing it (`seedCustomers`, `seedDemo`) and add a migration that
+deletes stored copies.
 
 ---
 
@@ -174,6 +183,13 @@ function $(sel){
 
 Low risk: every currently correct call is a plain id and behaves identically.
 Verify with the full suite afterwards.
+
+**Still live in one place, confirmed while building the Shipment Database.** The
+Ctrl+S shortcut finds the open tab with `$(".page.on")`, which is always `null`, so
+pressing Ctrl+S on an advice saves nothing and shows nothing. Verified in a
+browser: with a complete advice on screen, Ctrl+S left the register empty, and the
+Save button then saved it. The helper fix above repairs the shortcut without
+touching its handler.
 
 ---
 
@@ -382,6 +398,122 @@ own storage. It does not, and the guidance has been corrected.
 
 ---
 
+## A-21 — Restoring a backup skips the data migrations {#a-21}
+
+**P2. Wrong until the page is next reloaded.**
+
+The migrations in `load()` - tagging untyped invoices (M1), giving legacy
+reception records an id (M2) and backfilling the billing party (M3) - run only
+when the page loads. **Rates & Data → Restore from Backup** replaces `DB` and calls
+`boot()` directly:
+
+```js
+DB = o; save(); boot();
+```
+
+So a backup from an older version is used unmigrated for the rest of that session.
+Until the next reload, legacy invoices without a `type` are missing from the
+Dashboard, the Lying List and Facility Security, and legacy reception records
+without an id cannot be deleted. Printing is already covered: `billingOf()` applies
+the M3 rule to any record on the fly.
+
+**Fix:** move the backfills out of `load()` into `migrateDB(db)`, call it from both
+`load()` and the restore handler, and add a spec that restores a legacy backup and
+checks the Dashboard without reloading.
+
+---
+
+## A-22 — No customer master with TRNs on a counter machine {#a-22}
+
+**P1 as found. ACCEPTED by decision D-11: the application is a prototype on demo
+customer data.**
+
+Customer details - TRN, address, country, payment mode - exist only in the
+`CUSTOMERS` array inside the application file, and from 1.1.0 that array is the
+demo master. The data a machine holds itself has names only: `DB.customers` is a
+list of strings, and a backup is `DB`. So on a machine holding its own customer
+names, the pickers offer those names but `resolveCustomer()` finds none of them,
+the billing party's TRN and address never fill in, and every AWB owner is noted
+as "not in the customer master".
+
+Verified in a browser with a name held in `DB.customers` but not in the demo
+master: the picker offers it, and choosing it as the billing party leaves the TRN
+and address empty.
+
+**Decision (D-11):** no per-machine customer master is built. The application is
+a prototype that runs on demo customer data, shown on the Customer Database tab,
+for demonstration and the ERP handover. The real customer master, with its TRNs
+and addresses, belongs in the ERP - see `07-erp-handover-spec.md`. Builds from
+1.1.0 are therefore not for rollout to a counter machine.
+
+---
+
+## A-23 — The storage manual override cannot be used {#a-23}
+
+**P3. Open.**
+
+The import tariff has a "Storage - Manual Override (per day)" line, but it is a
+`kind:"days"` line, which the form skips, and `collectAdvice()` always saves
+`storageOverride: false`. So the "Storage manually adjusted" note on the printed
+advice and the OVR marker in the register can never appear. Staff can still change
+storage by editing the storage line's quantity or rate, but that is not recorded as
+an override. Either remove the line and the flag, or give the storage line an
+override with a required reason, like the payment reason.
+
+---
+
+## A-24 — An SHC code not in the list billed as general cargo {#a-24}
+
+**P1 as found. FIXED.**
+
+`shcClass()` returned `general` for any code it did not recognise, and a manifest
+code outside the list was not put on the form, which kept its GEN default. General
+is the cheapest class, so an unexpected code under-billed without anyone noticing.
+A field with several codes ("PER COL") was unrecognised too, so a perishable
+shipment could bill as general.
+
+**Fix (D-14):** GEN and ELI are general; any perishable code makes a shipment
+perishable; every other code, listed or not, is special. A manifest code outside
+the list is kept on the form and flagged. The Dangerous Goods Inspection applies
+when any code is DGR. The regression suite checks every listed code on both
+advices, and the combined and unknown cases.
+
+---
+
+## A-25 — Dates read month-first on a US-English browser {#a-25}
+
+**P1 as found. FIXED.**
+
+The date and time fields were the browser's own inputs, which follow the browser's
+language, and on a US-English browser read `mm/dd/yyyy`. Printouts, the register
+and exports showed `yyyy-mm-dd`. At a UAE counter, 01/09 entered as a date could be
+taken as 9 January, and storage is billed from those times.
+
+**Fix (D-13):** every date is shown and typed day-first, `dd/mm/yyyy` and
+`dd/mm/yyyy hh:mm`, with a calendar button; an unreadable date turns the field red
+and counts as empty. Stored dates stay ISO, so no filter or calculation changed.
+
+---
+
+## A-26 — Free-hour rules could not be set to zero, and the reference ignored them {#a-26}
+
+**P3 as found. FIXED.**
+
+Saving 0 free hours fell back to the standard 48 or 8, because the value was read
+with `|| default`. The SHC reference under Rates & Data had the hours written into
+its text, so it did not change when the rules did.
+
+---
+
+## A-27 — The import storage readout counted "since acceptance" {#a-27}
+
+**P3 as found. FIXED.**
+
+Import storage runs from RCF to delivery, but the live readout said "Elapsed since
+acceptance" on both advices.
+
+---
+
 ## Recommended order
 
 The housekeeping pass is done. What remains, in order:
@@ -393,9 +525,10 @@ The housekeeping pass is done. What remains, in order:
 3. **First PR:** A-02 (references) and A-04 (quota). Both touch money and data
    safety. A-02 is now a small change confined to `refFor()` / `previewRef()`.
 4. **Second PR:** A-20 (storage instance identity) - it protects the ledger.
-5. **Third PR:** A-06 (`$` helper), then A-07 (single charge formula). These
-   remove whole classes of future bug and make later refactoring safe.
-6. **Fourth PR:** A-03, A-05, A-08 - correctness and clarity.
+5. **Third PR:** A-06 (`$` helper, which also revives the dead Ctrl+S shortcut),
+   then A-07 (single charge formula). These remove whole classes of future bug and
+   make later refactoring safe.
+6. **Fourth PR:** A-03, A-05, A-08, A-21, A-23 - correctness and clarity.
 7. **When restyling:** A-15 (inline field styles). Visual change, own PR.
 8. **Backlog:** A-10, only if tablets are actually required.
 

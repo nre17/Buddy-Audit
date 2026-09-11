@@ -36,6 +36,26 @@ if (!SAMPLE_CUSTOMER) {
 /** A second, distinct customer for tests that need two. */
 const OTHER_CUSTOMER = CUSTOMERS.find((c) => c.name !== SAMPLE_CUSTOMER.name);
 
+/** A third customer with a TRN, a phone number and an address, so the billing
+    party autofill is exercised in full. */
+const BILLING_CUSTOMER = CUSTOMERS.find(
+  (c) =>
+    c.name !== SAMPLE_CUSTOMER.name &&
+    c.name !== OTHER_CUSTOMER.name &&
+    /^\d{15}$/.test(String(c.trn)) &&
+    String(c.phone).trim() &&
+    String(c.addr).trim()
+);
+if (!BILLING_CUSTOMER) {
+  throw new Error("demo master has no customer with a TRN, phone and address");
+}
+
+/** The manifest headings as the counter's Excel sheet has them. */
+const MANIFEST_HEADER = [
+  "AWB", "Origin", "Destination", "Flight Number", "Departure date and Time (Export)",
+  "RCF date and time (import)", "SHC Code", "Nature of goods", "# of Pieces", "Gross Weight", "Customer",
+];
+
 /* ---------- assertions ---------- */
 
 class AssertionError extends Error {}
@@ -181,7 +201,34 @@ async function fillAdvice(page, mode, fields) {
     else await page.fill(sel, String(fields[key]));
     await page.waitForTimeout(60);
   }
+  // Every advice needs a billing party. Specs about other behaviour should not
+  // have to care, so unless a spec sets one (even to ""), bill the AWB owner.
+  if (fields.cust !== undefined && fields.bill === undefined) {
+    await page.fill("#" + p + "bill", String(fields.cust));
+    await page.waitForTimeout(60);
+  }
   await page.waitForTimeout(200);
+}
+
+/** Manifest text as Excel puts it on the clipboard: tab-separated rows. */
+function manifestText(header, rows) {
+  return [header].concat(rows).map((r) => r.join("\t")).join("\n");
+}
+
+/** Paste a manifest on the Shipment Database tab, preview it, optionally set the
+    date order ("DMY" / "MDY"), and import. Returns the toast text. */
+async function importManifest(page, text, order) {
+  await tab(page, "Shipment Database");
+  await page.fill("#sh_paste", text);
+  await page.click("#sh_preview");
+  await page.waitForTimeout(150);
+  if (order) {
+    await page.selectOption("#sh_order", order);
+    await page.waitForTimeout(150);
+  }
+  await page.click("#sh_import");
+  await page.waitForTimeout(250);
+  return page.evaluate(() => document.getElementById("toast").textContent);
 }
 
 /** Read a charge row by its line id, e.g. "ex_handling_gen". */
@@ -241,8 +288,9 @@ async function modalClick(page, label) {
 
 module.exports = {
   APP_URL, APP_PATH,
-  SAMPLE_CUSTOMER, OTHER_CUSTOMER,
+  SAMPLE_CUSTOMER, OTHER_CUSTOMER, BILLING_CUSTOMER, MANIFEST_HEADER,
   AssertionError, assert, eq, eqMoney, contains, notContains,
   openApp, tab, localDT, fillAdvice, chargeRow, payMode, saveAdvice,
+  manifestText, importManifest,
   db, lyingList, modalClick,
 };

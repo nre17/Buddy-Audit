@@ -5,9 +5,9 @@
 advice and invoicing process as it currently operates at DWC.
 **Audience:** the ERP implementation team.
 
-This describes a working system in daily production use, not a wish list. Where the
-current tool has a known limitation, it is marked **[GAP]** so the ERP does not
-inherit it.
+This describes the counter process as it runs, demonstrated by a working prototype
+on demo data - not a wish list. Where the prototype has a known limitation, it is
+marked **[GAP]** so the ERP does not inherit it.
 
 ---
 
@@ -35,12 +35,19 @@ Currency is AED throughout. VAT is applied per charge line, not globally.
 | Customer | name, TRN, address, city, country, default payment mode, phone, email | low thousands |
 | Staff | name | under ten per counter |
 | Site configuration | company name, address, contact, tax number; AED and USD bank blocks | 1 per legal entity |
+| Shipment | AWB, origin, destination, flight, departure or RCF time, SHC, nature of goods, pieces, gross weight, AWB owner | one manifest a day |
 | SHC code | code, description, cargo class (general / special / perishable) | 17 |
 | Tariff line | description, rate, unit (per AWB / per kg / per kg-day / each), minimum charge, VAT %, cargo class, auto-apply rule | 11 automatic, 32 optional |
 | Free storage period | hours, by cargo class | general 48, special 48, perishable 8 |
 
 Cargo class is **derived** from the SHC code, and drives the handling rate, the
-storage rate and the free storage window. It is not entered by staff.
+storage rate and the free storage window. It is not entered by staff. GEN and ELI
+are general cargo; any perishable code (PER, PEP, PEF, PEM, PES) is perishable;
+every other code, including one not in the list, is special. A shipment with
+several codes is perishable if any code is, and general only if every code is.
+
+**Dates** are shown and entered day-first (`dd/mm/yyyy`, 24-hour times) and held
+in ISO 8601.
 
 > **Master data will need a cleansing pass.** The customer master originates as
 > a spreadsheet maintained by hand and has never been validated on import. Assume
@@ -51,6 +58,9 @@ storage rate and the free storage window. It is not entered by staff.
 > The customer list in the demonstration application is **generated demo data**,
 > not an operational extract. Operational master data is provided separately
 > under NDA.
+>
+> The prototype deliberately has no way to load the real customer master. The ERP
+> holds it, including the TRN and address that the billing party prints.
 
 ---
 
@@ -60,15 +70,23 @@ storage rate and the free storage window. It is not entered by staff.
 
 Triggered when cargo is accepted (export) or is ready for delivery (import).
 
-**Captured:** customer (from master, autofills TRN, address, country, default
-payment mode), MAWB, HAWB and optional HAWB quantity, origin and destination
-(DWC defaults on the relevant side), SHC code, flight number, gross weight, pieces,
-nature of goods, and two timestamps:
+**Captured:** the AWB first. The shipment's details come from the day's manifest,
+loaded into a Shipment Database and looked up by AWB: AWB owner, origin and
+destination, flight number, SHC code, nature of goods, pieces, gross weight, and
+the departure time (export) or RCF time (import). Staff then add the HAWB and
+optional HAWB quantity, the counter's own timestamp, and the **billing party**,
+chosen from the customer master, whose TRN and address are the ones printed. Two
+timestamps drive the charges:
 
 | | First timestamp | Second timestamp |
 |---|---|---|
 | Export | Cargo acceptance (RCS) | Flight departure (STD) |
 | Import | Received at facility (RCF) | Delivery to consignee |
+
+> **AWB owner and billing party are distinct.** An AWB booked under one company is
+> often invoiced to another. The ERP must capture both: the AWB owner
+> for operational reporting, and the billing party, with its TRN and address, as
+> the only party printed on the charge document.
 
 **Priced automatically** — see section 4. Staff may add optional tariff charges from
 a controlled catalogue, add a free-text line, or override any rate on the advice.
@@ -80,7 +98,8 @@ Cash + Card requires an explicit split.
 **Output:** a saved invoice in the register, plus a printed advice in the copies
 listed in section 1.
 
-**Validation on save:** customer, MAWB, gross weight and pieces are mandatory, and
+**Validation on save:** the AWB, the AWB owner, the billing party, both timestamps,
+gross weight and pieces are mandatory, and
 at least one charge line must be billable. If entered payment amounts do not
 reconcile to the invoice total, the user is warned but the save proceeds.
 
@@ -244,6 +263,13 @@ These are the constraints it cannot solve and the ERP must:
    replacement is expected to carry forward.
 10. **Validation on master-data import**, so a malformed or misplaced value is
     rejected or flagged rather than flowing through to a printed document.
+11. **Shipment data from the source, not re-keyed.** Today the counter pastes a
+    manifest into a local Shipment Database so an advice fills from its AWB. The
+    ERP should take shipment data straight from the booking or cargo management
+    system, keyed by AWB, keeping the same guards: no fill and no invoice across export and
+    import, and no stale details left under a changed AWB.
+12. **A billing party distinct from the AWB owner**, drawn from the ERP's real
+    customer master, with its TRN and address printed on the tax invoice.
 
 ---
 

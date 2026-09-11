@@ -124,7 +124,7 @@ Be specific about the file region and the expected verification. Vague prompts o
 > change any code — report only.
 
 **Auditing:**
-> Audit lines 4002-4451 (shift handover) for the same class of bug as A-06: a
+> Audit the shift handover region for the same class of bug as A-06: a
 > compound selector passed to $(). Report findings with line numbers, propose fixes,
 > change nothing yet. Use docs/04-code-map.md to locate the region rather than
 > reading the whole file.
