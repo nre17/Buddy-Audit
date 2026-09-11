@@ -132,15 +132,6 @@ async function openApp(opts) {
   const context = await browser.newContext({
     timezoneId: opts.timezoneId || "Asia/Dubai",
   });
-  if (!opts.firstOpen) {
-    await context.addInitScript(() => {
-      try {
-        if (localStorage.getItem("solitair_shipments_v1") === null) {
-          localStorage.setItem("solitair_shipments_v1", JSON.stringify({ items: [] }));
-        }
-      } catch (e) { /* not the app's page */ }
-    });
-  }
   const page = await context.newPage();
 
   const consoleErrors = [];
@@ -158,6 +149,14 @@ async function openApp(opts) {
       }
     }, opts.seed);
     await page.reload({ waitUntil: "load" });
+  }
+
+  if (!opts.firstOpen) {
+    // Empty the sample shipments a first open loads, once the app has booted. Not
+    // done in an init script: that touches localStorage at the start of every
+    // load, reloads included, and on a slow machine can read storage before the
+    // previous page's writes have landed, so a spec's saved data vanishes.
+    await page.evaluate(() => { SH = { items: [] }; shSave(); buildShipments(); shRefreshForms(); });
   }
 
   await page.waitForTimeout(400); // boot() builds all eight tabs synchronously
