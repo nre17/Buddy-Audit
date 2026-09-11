@@ -277,7 +277,7 @@ table.reg tbody tr:hover td:last-child{background:#f8fafc}
 
 /* Bump on every release. Shown under Rates & Data so a counter machine can be
    checked against the released version without opening the file. */
-var APP_VERSION = "1.2.1";
+var APP_VERSION = "1.2.2";
 
 /* SITE DETAILS - PLACEHOLDERS.
    The tax registration number and bank account details are site configuration,
@@ -4890,10 +4890,13 @@ function buildAdmin(){
       [{label:"Cancel"},{label:"Load", cls:"pri", fn:seedDemo}]);
   };
   $("#btnWipe").onclick = function(){
-    modal("Erase all data?","<p>Every invoice, handover and setting will be deleted from this browser. Take a backup first.</p>",
+    modal("Erase all data?","<p>Every invoice, handover, reception record, lying list entry and setting will be deleted from this browser. Take a backup first.</p>",
       [{label:"Cancel"},{label:"Erase everything", cls:"dgr", fn:function(){
         DB = {openingBalance:0,openingNote:"",openingDate:"",entries:[],seq:{},customers:[],staff:null};
-        save(); boot(); toast("All data erased");
+        /* the lying list is kept under its own key, which boot() reloads, so it
+           has to be emptied here too or its entries survive the erase */
+        LL = { items: [], cleared: [] };
+        save(); llSave(); boot(); toast("All data erased");
       }}]);
   };
   $("#dbcount").textContent = DB.entries.length;

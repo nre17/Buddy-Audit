@@ -5,6 +5,25 @@ Newest first.
 
 ---
 
+## [1.2.2] — 2026-09-11 — Erase All Data empties the lying list
+
+Verified by the regression suite (95 cases).
+
+### Fixed
+
+- **Erase All Data now empties the lying list.** The Invoice Register and the
+  Facility Security portal were emptied, but the lying list is kept under its own
+  storage key and was reloaded, so its entries survived an erase. (A-28)
+- The erase warning now names reception records and lying list entries.
+
+### Added
+
+- Tests that a first open shows an empty Invoice Register, lying list and security
+  portal, that the first invoice fills only the register and the lying list, and
+  that Erase All Data leaves all three empty, including after reopening.
+
+---
+
 ## [1.2.1] — 2026-09-11 — Sample shipments on first open
 
 Verified by the regression suite (93 cases).

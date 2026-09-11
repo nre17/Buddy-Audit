@@ -41,6 +41,7 @@ Severity: **P0** act before wider rollout · **P1** fix soon · **P2** worth doi
 | [A-25](#a-25) | Dates read month-first on a US-English browser | Fixed: every date is shown and typed day-first (decision D-13). |
 | [A-26](#a-26) | Free-hour rules could not be set to zero, and the SHC reference ignored the saved hours | Fixed. |
 | [A-27](#a-27) | The import storage readout counted "since acceptance" | Fixed: it reads "since RCF". |
+| [A-28](#a-28) | Erase All Data left the lying list in place | Fixed: the lying list is emptied with everything else. |
 
 All closures were verified by the 50-case regression suite plus a pixel-level
 screenshot comparison across all eight tabs, before and after. Rendering is
@@ -511,6 +512,19 @@ its text, so it did not change when the rules did.
 
 Import storage runs from RCF to delivery, but the live readout said "Elapsed since
 acceptance" on both advices.
+
+---
+
+## A-28 — Erase All Data left the lying list in place {#a-28}
+
+**P2 as found. FIXED.**
+
+**Rates & Data → Erase All Data** replaced `DB`, which holds the invoice register and
+the reception records, and then ran `boot()`. The lying list is kept under its own
+key, `solitair_lying_v1`, and `boot()` reloads it, so every entry on the list
+survived the erase, while the warning promised that everything would be deleted.
+The erase now empties the lying list as well, and a regression test checks all
+three are empty after erasing and after reopening.
 
 ---
 

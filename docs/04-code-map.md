@@ -1,6 +1,6 @@
 # Code Map
 
-Navigation aid for `app/solitair-invoicing.html` (6,042 lines).
+Navigation aid for `app/solitair-invoicing.html` (6,045 lines).
 
 > Line numbers verified against the file on 11 September 2026.
 
@@ -61,12 +61,12 @@ what the test harness resolves `h.SAMPLE_CUSTOMER` from.
 | 4414 - 4603 | Exports | `regRows`, a dependency-free XLSX writer (`crc32`, `zipBuild`, `sheetXml`, `buildXlsx`), `exportExcel`, `exportCsv` |
 | 4604 - 4622 | State + logo | `DB` initial shape (including `company` / `bank` site config), `LOGO_LIGHT` (**line 4621, do not read**), `LOGO_PRINT` |
 | 4626 - 4714 | **Rate tables** | `EXPORT_LINES`, `EXPORT_OPTIONAL`, `IMPORT_LINES`, `IMPORT_OPTIONAL`. See `03-business-rules.md` |
-| 4715 - 4928 | Rates & Data tab | `buildAdmin`, `rateTable`, `applyRateOverrides`, **Company & Bank Details card**, logo upload, staff list, backup/restore |
-| 4929 - 4986 | Sample data | `seedDemo` (its customers are drawn from `CUSTOMERS`) |
-| 4987 - 5447 | Shift handover | `EQUIP_DEFAULT`, `SHIFTS`, `buildHandover`, held-shipment panels, equipment table, `syncShiftWindow`, `handoverFigures` (the calculation), `renderHandover`, `handoverData`, `saveHandover`, `renderSavedReports`, `printHandover`, lying-list band |
-| 5448 - 5618 | Lying list | `LL` state, `llLoad`/`llSave`, `buildLying`, `llCommit`, `llSyncFromRegister`, `llSweep`, `llCountdown`, `renderLying` |
-| 5619 - 5931 | Facility security | `buildSecurity`, `secAdd`, `addOneAwb`, `loadSample`, backup/restore, `secFind`, `renderSecurity`, `findInvoiceByAWB`, `scanMissing`, `ackSelected`, `addBlock`, `confirmLookup` |
-| 5932 - 6042 | Boot | `fillStaff`, `applyLogo`, `applySiteOverrides`, `boot()` (loads shipments and builds the Shipment Database and Customer Database tabs before the advices), tab wiring, the 30s lying-list timer, Ctrl+S / Ctrl+P / Esc handlers (Ctrl+S is dead - audit A-06) |
+| 4715 - 4931 | Rates & Data tab | `buildAdmin`, `rateTable`, `applyRateOverrides`, **Company & Bank Details card**, logo upload, staff list, backup/restore |
+| 4932 - 4989 | Sample data | `seedDemo` (its customers are drawn from `CUSTOMERS`) |
+| 4990 - 5450 | Shift handover | `EQUIP_DEFAULT`, `SHIFTS`, `buildHandover`, held-shipment panels, equipment table, `syncShiftWindow`, `handoverFigures` (the calculation), `renderHandover`, `handoverData`, `saveHandover`, `renderSavedReports`, `printHandover`, lying-list band |
+| 5451 - 5621 | Lying list | `LL` state, `llLoad`/`llSave`, `buildLying`, `llCommit`, `llSyncFromRegister`, `llSweep`, `llCountdown`, `renderLying` |
+| 5622 - 5934 | Facility security | `buildSecurity`, `secAdd`, `addOneAwb`, `loadSample`, backup/restore, `secFind`, `renderSecurity`, `findInvoiceByAWB`, `scanMissing`, `ackSelected`, `addBlock`, `confirmLookup` |
+| 5935 - 6045 | Boot | `fillStaff`, `applyLogo`, `applySiteOverrides`, `boot()` (loads shipments and builds the Shipment Database and Customer Database tabs before the advices), tab wiring, the 30s lying-list timer, Ctrl+S / Ctrl+P / Esc handlers (Ctrl+S is dead - audit A-06) |
 
 ---
 
@@ -86,11 +86,11 @@ Changing any of these has wide blast radius. Read the whole function first.
 | `billingOf(e)` | 4315 | The billing party of any record, legacy ones included. What the printed advice shows. |
 | `renderRegister()` | 4039 | The ledger and the running cash balance. |
 | `cashOnHand()` | 2556 | Opening float + cash collected − cash handed over. Feeds the header chip, the dashboard and the handover validation. |
-| `handoverFigures()` | 5136 | Independently recomputes shift cash. Does **not** call `cashOnHand()`. |
-| `llSyncFromRegister()` | 5535 | Auto-joins export invoices to the lying list. Dedupes by AWB across live **and** cleared. |
-| `findInvoiceByAWB(awb)` | 5837 | The invoiced / not-invoiced check behind Facility Security. |
+| `handoverFigures()` | 5139 | Independently recomputes shift cash. Does **not** call `cashOnHand()`. |
+| `llSyncFromRegister()` | 5538 | Auto-joins export invoices to the lying list. Dedupes by AWB across live **and** cleared. |
+| `findInvoiceByAWB(awb)` | 5840 | The invoiced / not-invoiced check behind Facility Security. |
 | `load()` | 2504 | Contains all three legacy backfills. Any new persisted field needs one here. |
-| `applySiteOverrides()` | 5965 | Applies the per-machine company and bank details from `DB` over `CFG`. The reason no bank details are in the source. |
+| `applySiteOverrides()` | 5968 | Applies the per-machine company and bank details from `DB` over `CFG`. The reason no bank details are in the source. |
 | `previewRef(mode)` | 2465 | The reference the next saved invoice would get. The single place to fix A-02. |
 
 ---

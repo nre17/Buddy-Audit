@@ -16,7 +16,7 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 
 | Spec | Covers |
 |---|---|
-| `01-boot.spec.js` | Clean boot, all ten tabs build, embedded logo, local-time defaults |
+| `01-boot.spec.js` | Clean boot, all ten tabs build, embedded logo, local-time defaults, an empty register, lying list and security portal on a first open and after Erase All Data |
 | `02-advice-form.spec.js` | Field defaults, HAWB qty, print action, modal close |
 | `03-charges.spec.js` | **The tariff.** Auto-applied fees, minimums, cargo class for every SHC code on both advices (and several or unknown codes), storage days, free-hour rules, DG, late acceptance, optional charges, zero-line suppression |
 | `04-payments.spec.js` | Payment-mode fields, blank amount = full total, an amount that differs needs a reason (register vs printed advice), Cash + Card split |
