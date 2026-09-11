@@ -3262,13 +3262,16 @@ function buildAdvice(mode){
   });
   h += '</div>';
 
-  /* 5 payment method inputs — only the relevant one(s) show based on selected mode */
+  /* 5 payment method inputs - only the relevant one(s) show based on selected
+     mode - and the reason box, shown in every mode, for an amount that differs
+     from the total */
   h += '<div class="payfields" id="'+(isExp?'a':'i')+'_payfields" style="margin-top:8px">';
-  h += fld("Cash Collected (AED)", '<input id="'+(isExp?"a":"i")+'_pay_cash" type="number" step="0.01" min="0" value="0" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
-  h += fld("Card (AED)", '<input id="'+(isExp?"a":"i")+'_pay_card" type="number" step="0.01" min="0" value="0" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
-  h += fld("Credit (AED)", '<input id="'+(isExp?"a":"i")+'_pay_credit" type="number" step="0.01" min="0" value="0" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
-  h += fld("CASS (AED)", '<input id="'+(isExp?"a":"i")+'_pay_cass" type="number" step="0.01" min="0" value="0" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
-  h += fld("Bank Transfer (AED)", '<input id="'+(isExp?"a":"i")+'_pay_bank" type="number" step="0.01" min="0" value="0" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
+  h += fld("Cash Collected (AED)", '<input id="'+(isExp?"a":"i")+'_pay_cash" type="number" step="0.01" min="0" value="" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
+  h += fld("Card (AED)", '<input id="'+(isExp?"a":"i")+'_pay_card" type="number" step="0.01" min="0" value="" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
+  h += fld("Credit (AED)", '<input id="'+(isExp?"a":"i")+'_pay_credit" type="number" step="0.01" min="0" value="" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
+  h += fld("CASS (AED)", '<input id="'+(isExp?"a":"i")+'_pay_cass" type="number" step="0.01" min="0" value="" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
+  h += fld("Bank Transfer (AED)", '<input id="'+(isExp?"a":"i")+'_pay_bank" type="number" step="0.01" min="0" value="" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box;font-variant-numeric:tabular-nums">');
+  h += fld("Reason the amount differs from the total", '<input id="'+(isExp?"a":"i")+'_pay_reason" type="text" placeholder="Needed only when the amount is more or less than the total" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12px;background:#fff;box-sizing:border-box">');
   h += '</div>';
 
   h += '<div style="margin-top:8px;font-size:11px;color:var(--mut)">Receiving Party: <input id="'+(isExp?"a":"i")+'_rcvby" placeholder="Name of person who received /accepted cargo" style="border:1px solid var(--line);border-radius:5px;padding:5px 8px;font-size:12px;background:#fff;box-sizing:border-box"></div>';
@@ -3307,14 +3310,16 @@ function buildAdvice(mode){
         pmodes.querySelectorAll(".payopt").forEach(function(b){ b.classList.remove("on"); b.style.background="#fff"; b.style.borderColor="var(--line)"; b.style.color="var(--txt)"; });
         btn.classList.add("on");
         btn.style.background="var(--brand)"; btn.style.borderColor="var(--brand)"; btn.style.color="#fff";
+        var was = $((isExp?"a":"i")+"_paymode").value;
         $((isExp?"a":"i")+"_paymode").value = btn.dataset.pm;
-        /* show only the payment field(s) matching the selected mode */
+        /* show only the payment field(s) matching the selected mode; a hidden
+           field goes back to its starting value */
         var pf = $((isExp?"a":"i")+"_payfields");
         if(pf){
           var pm = btn.dataset.pm;
           var allFields = pf.querySelectorAll("input");
           var visIds = {
-            "Cash": [],
+            "Cash": "pay_cash",
             "Card": "pay_card",
             "Credit": "pay_credit",
             "CASS": "pay_cass",
@@ -3325,10 +3330,13 @@ function buildAdvice(mode){
           visIds = Array.isArray(visIds) ? visIds : [visIds];
           allFields.forEach(function(f){
             var suffix = f.id.replace(p+"_","");
-            var show = visIds.indexOf(suffix) >= 0;
+            var show = suffix === "pay_reason" || visIds.indexOf(suffix) >= 0;
             f.parentElement.style.display = show ? "block" : "none";
-            if(!show && f.value !== "0") f.value = "0";
+            if(!show) f.value = f.defaultValue;
           });
+          /* a reason belongs to the amounts it explains, which a change of mode clears */
+          if(was !== pm) $(p+"_pay_reason").value = "";
+          payHint(p, pm);
         }
         /* set the matching pay field to the total and zero out others - done on save */
       };
@@ -3339,17 +3347,15 @@ function buildAdvice(mode){
   $((isExp?"a":"i")+"_paymode").value = "Cash";
   var firstPm = pmodes ? pmodes.querySelector('.payopt') : null;
   if(firstPm){ firstPm.classList.add("on"); firstPm.style.background="var(--brand)"; firstPm.style.borderColor="var(--brand)"; firstPm.style.color="#fff"; }
-  /* apply initial payment field visibility (Cash only) */
+  /* apply initial payment field visibility (Cash: the cash amount and the reason) */
   var pf = $((isExp?"a":"i")+"_payfields");
   if(pf){
     var p = isExp?"a":"i";
-    ["pay_cash","pay_card","pay_credit","pay_cass","pay_bank"].forEach(function(s){
+    ["pay_cash","pay_card","pay_credit","pay_cass","pay_bank","pay_reason"].forEach(function(s){
       var el = pf.querySelector("input[id=\""+p+"_"+s+"\"]");
-      if(el){
-        el.parentElement.style.display = "none";
-        if(el.value !== "0") el.value = "0";
-      }
+      if(el) el.parentElement.style.display = s === "pay_cash" || s === "pay_reason" ? "block" : "none";
     });
+    payHint(p, "Cash");
   }
 
   /* live recalc of charge table */
@@ -3576,6 +3582,18 @@ function recalcLine(tr){
   chargeEl.textContent = money(chargeWithVat);
 }
 
+/* Payment amounts. A single-method mode takes its amount as typed (0 included);
+   left blank, the whole total. Cash + Card takes both amounts as typed. The
+   amount is what the Invoice Register records; the printed advice always shows
+   the full charges, so an amount that differs needs a reason (saveAdvice). */
+var PAY_FIELD = {"Cash":"cash", "Card":"card", "Credit":"credit", "CASS":"cass", "Bank Transfer":"bank"};
+function payHint(p, pm){
+  ["cash","card","credit","cass","bank"].forEach(function(k){
+    var el = $(p+"_pay_"+k);
+    if(el) el.placeholder = PAY_FIELD[pm] === k ? "Blank = full total" : "0.00";
+  });
+}
+
 function recalcAll(prefix){
   var tbody = prefix ? $(prefix+"_lines") : ($("a_lines") || $("i_lines"));
   if(!tbody) return;
@@ -3655,6 +3673,12 @@ function collectAdvice(mode){
     /* zero out other payment fields - cash/card values already came
        straight from the Payment Breakdown fields above */
     pay.credit = 0; pay.cass = 0; pay.bank = 0;
+  } else if(PAY_FIELD[paymode]){
+    /* a single method: the amount typed is kept as entered, 0 included; left
+       blank, it is the total. Every other method is zeroed. */
+    var typed = $(p+"_pay_"+PAY_FIELD[paymode]).value.trim(), amount = typed === "" ? total : num(typed);
+    pay = {cash:0, card:0, credit:0, cass:0, bank:0, prepaid:0};
+    pay[PAY_FIELD[paymode]] = amount;
   } else {
     /* auto-distribute: if only one payment method has value, use it */
     var nonZero = [];
@@ -3708,6 +3732,9 @@ function collectAdvice(mode){
     pay: pay,
     txn: $(p+"_txn").value.trim(),
     rem: $(p+"_rem").value.trim(),
+    /* kept only when the amounts really differ from the total */
+    payReason: Math.abs(pay.cash + pay.card + pay.credit + pay.cass + pay.bank - total) > 0.01 && $(p+"_pay_reason")
+      ? $(p+"_pay_reason").value.trim() : "",
     rcvby: $(p+"_rcvby").value.trim(),
     cls: shcClass($(p+"_shc").value),
     storageOverride: false,
@@ -3743,10 +3770,21 @@ function saveAdvice(mode){
   /* validate charge lines */
   if(e.items.length === 0){ toast("Add at least one charge line","err"); return; }
 
-  /* ensure total matches payment */
-  var payTotal = e.pay.cash + e.pay.card + e.pay.credit + e.pay.cass + e.pay.bank;
-  if(payTotal > 0 && Math.abs(payTotal - e.total) > 0.01){
-    toast("Payment total ("+money(payTotal)+") does not match charges ("+money(e.total)+"). Adjust the payment fields.","warn");
+  /* the amounts typed are what the Invoice Register records, while the advice
+     prints the full charges - so amounts that differ from the total need a reason */
+  var payPrefix = mode==="export" ? "a" : "i";
+  if(e.payMode === "Cash + Card" && !$(payPrefix+"_pay_cash").value.trim() && !$(payPrefix+"_pay_card").value.trim()){
+    toast("Enter the cash and card amounts","err");
+    return;
+  }
+  var payTotal = e.pay.cash + e.pay.card + e.pay.credit + e.pay.cass + e.pay.bank, payNote = "";
+  if(Math.abs(payTotal - e.total) > 0.01){
+    if(!e.payReason){
+      toast(e.payMode+" AED "+money(payTotal)+" differs from the total AED "+money(e.total)+". Give the reason.","err");
+      $(payPrefix+"_pay_reason").focus();
+      return;
+    }
+    payNote = "  |  "+e.payMode+" AED "+money(payTotal)+" against charges AED "+money(e.total);
   }
 
   /* assign ref if not set */
@@ -3761,7 +3799,7 @@ function saveAdvice(mode){
 
   DB.entries.push(e);
   save();
-  toast("Invoice saved: "+e.ref+"  |  "+e.cust+"  |  AED "+money(e.total),"ok");
+  toast("Invoice saved: "+e.ref+"  |  "+e.cust+"  |  AED "+money(e.total)+payNote,"ok");
 
   /* refresh register + lying list (export auto-join) */
   if(typeof buildRegister === "function") buildRegister();
@@ -3845,7 +3883,7 @@ function filteredEntries(){
     if(f.pay  && (e.type!=="invoice" || e.payMode!==f.pay)) return false;
     if(f.staff && e.staff!==f.staff) return false;
     if(f.q){
-      var hay = [e.mawb,e.hawb,e.cust,e.ref,e.rem,e.note].join(" ").toLowerCase();
+      var hay = [e.mawb,e.hawb,e.cust,e.ref,e.rem,e.payReason,e.note].join(" ").toLowerCase();
       if(hay.indexOf(f.q)<0) return false;
     }
     return true;
@@ -3895,7 +3933,7 @@ function renderRegister(){
       +'<td class="n">'+(e.pay.cass?money(e.pay.cass):"")+'</td>'
       +'<td class="n">'+(e.pay.bank?money(e.pay.bank):"")+'</td>'
       +'<td class="n"><b>'+money(e.total)+'</b></td>'
-      +'<td><span class="badge '+pb+'">'+esc(e.payMode)+'</span> '+esc(e.rem||"")+(e.storageOverride?' <b style="color:#b8860b">OVR</b>':'')+'</td>'
+      +'<td><span class="badge '+pb+'">'+esc(e.payMode)+'</span> '+esc(e.rem||"")+(e.payReason?' <i>Amount differs from total: '+esc(e.payReason)+'</i>':'')+(e.storageOverride?' <b style="color:#b8860b">OVR</b>':'')+'</td>'
       +'<td style="text-align:center"><span class="'+(e.hardcopy?"tick":"cross")+'" data-hc="'+e.id+'" style="cursor:pointer" title="Toggle hard copy received">'+(e.hardcopy?"&#10003;":"&#9675;")+'</span></td>'
       +'<td><button class="btn sm" data-print="'+e.id+'">Print</button> <button class="btn sm dgr" data-del="'+e.id+'">Del</button></td></tr>');
   });
@@ -4149,7 +4187,7 @@ function docCopy(e, copyName){
   h += '<table class="meta"><tbody>'
      + row2("Ref No.", e.ref, "Date Issued", fmtDT(e.ts))
      + row2("Billing Party", bill.name, "Billing Party TRN", bill.trn)
-     + row2("Billing Party Address", bill.addr, "Payment Mode", e.payMode + (e.payMode==="Cash + Card" ? "  (Cash "+money(e.pay.cash)+" / Card "+money(e.pay.card)+")" : ""))
+     + row2("Billing Party Address", bill.addr, "Payment Mode", e.payMode + (e.payMode==="Cash + Card" && !e.payReason ? "  (Cash "+money(e.pay.cash)+" / Card "+money(e.pay.card)+")" : ""))
      + row2("MAWB #", e.mawb, "HAWB #", e.hawb + (e.hawbqty ? "  (Qty: "+e.hawbqty+")" : ""))
      + row2("Origin", e.org, "Destination", e.dst)
      + row2("Nature of Goods", e.nog, "SHC Code", (e.shc||"")+(e.shc?"  ("+shcLabel(e.shc)+")":""))
@@ -4248,7 +4286,7 @@ function regRows(list){
                 num(e.pay.cash)||"", "", Math.round(bal*100)/100,
                 num(e.pay.card)||"", num(e.pay.credit)||"", num(e.pay.cass)||"", num(e.pay.bank)||"",
                 num(e.total), e.payMode, num(e.wt)||"", num(e.pcs)||"",
-                (e.rem||"")+(e.storageOverride?" [storage override: "+(e.ovReason||"no reason")+"]":""),
+                (e.rem||"")+(e.payReason?" [amount differs from total: "+e.payReason+"]":"")+(e.storageOverride?" [storage override: "+(e.ovReason||"no reason")+"]":""),
                 e.hardcopy?"Received":""]);
     }
   });

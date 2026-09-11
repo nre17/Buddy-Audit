@@ -11,7 +11,7 @@ The advice tabs now start from the AWB. The day's manifest is pasted into a new
 Shipment Database tab, and typing an AWB on an advice fills in that shipment. The
 company invoiced is chosen separately from the company the AWB is booked under.
 
-Verified by the regression suite (81 cases) and a pixel comparison of every other
+Verified by the regression suite (84 cases) and a pixel comparison of every other
 tab's panel against 1.1.0.
 
 ### Added
@@ -78,6 +78,16 @@ tab's panel against 1.1.0.
   bars are gone. Colour is carried by lines rather than fills, so it prints even
   with background graphics turned off. The shift handover report keeps its
   previous style.
+- **Amounts and reasons on the Payment Breakdown, for every payment method.** Each
+  mode shows its amount (blank means the full total) and a reason box. An amount
+  that differs from the total, for example to settle an earlier overcharge, needs
+  a reason before the advice saves. The printed advice always shows the full
+  charges; the Invoice Register records the amount typed, with the reason in
+  Remarks and in the Excel and CSV exports. Cash + Card can no longer be saved
+  with both amounts blank.
+- **A payment that does not add up is no longer saved silently.** It used to show
+  a warning that the "Invoice saved" message replaced at once; it now needs its
+  reason.
 - The export charge "Aviation / Live Animals (AVI) Handling" is now **Live
   Animals (AVI) Handling**. Rate, minimum and VAT are unchanged.
 - **Dates and times are mandatory** on both advices and marked with an asterisk:

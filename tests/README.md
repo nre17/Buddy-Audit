@@ -19,7 +19,7 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 | `01-boot.spec.js` | Clean boot, all ten tabs build, embedded logo, local-time defaults |
 | `02-advice-form.spec.js` | Field defaults, HAWB qty, print action, modal close |
 | `03-charges.spec.js` | **The tariff.** Auto-applied fees, minimums, cargo class, storage days, DG, late acceptance, optional charges, zero-line suppression |
-| `04-payments.spec.js` | Payment-mode field visibility, Cash + Card split, single-method auto-total |
+| `04-payments.spec.js` | Payment-mode fields, blank amount = full total, an amount that differs needs a reason (register vs printed advice), Cash + Card split |
 | `05-register-cash.spec.js` | Register listing, filters, `type` tagging, cash on hand, handover, delete |
 | `06-lying-list.spec.js` | Export auto-join, import exclusion, manual add, departure sweep, delete-and-re-add |
 | `07-security.spec.js` | Invoiced detection, missing-invoice alert, id-based delete under filter, block paste |

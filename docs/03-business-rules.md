@@ -208,15 +208,21 @@ Two optional lines compress a compound rate-sheet structure into the app's singl
 
 Modes: **Cash, Card, Cash + Card, CASS, Credit, Bank Transfer.**
 
-- Selecting a single-method mode shows one amount field.
-- **Cash shows no amount field at all** — the invoice total is the amount.
-- **Cash + Card** is the only mode that shows two fields, because the split has to
-  be entered by hand.
-- On save, if no amount was typed, the full total is assigned to the selected
-  method. If exactly one method carries a value, it is set to the total. Methods
-  not relevant to the mode are zeroed.
-- If the amounts entered do not reconcile to the invoice total, the save proceeds
-  but a warning toast is shown.
+- Every mode shows its amount field, blank by default, and a **reason box**.
+  - **Cash, Card, Credit, CASS, Bank Transfer:** left blank, the full total is
+    taken by that method. An amount can be typed instead (0 included), for
+    example to settle an earlier overcharge.
+  - **Cash + Card:** both amounts are typed; saving with both blank is refused.
+  - Methods not relevant to the mode are zeroed. Changing mode clears the
+    amounts and the reason.
+- **When the amount differs from the total, the advice cannot be saved until the
+  reason is given.**
+- The **printed advice always shows the full charges.** The amount typed and the
+  reason are never printed; a Cash + Card split is printed only when it adds up to
+  the total.
+- The **Invoice Register** records the amount typed in the method's column, with
+  the reason in Remarks ("Amount differs from total: ..."). Total Sale stays the
+  full charges. The Excel and CSV exports carry the reason too.
 
 Bank details are printed on the advice for Bank Transfer, Credit and CASS. A credit
 card slip box is printed for Card and Cash + Card.
