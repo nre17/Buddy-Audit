@@ -5,6 +5,21 @@ Newest first.
 
 ---
 
+## [1.2.1] — 2026-09-11 — Sample shipments on first open
+
+Verified by the regression suite (93 cases).
+
+### Changed
+
+- **The Shipment Database opens with the sample shipments.** The first time the
+  application is opened in a browser, it loads the ten sample shipments, so an AWB
+  typed on an advice fills in straight away instead of the tab being blank. This
+  happens once per browser: shipments removed with **Clear Loaded Shipments** stay
+  removed on the next open, and a pasted manifest is added alongside the samples.
+  **Load Sample Shipments** still reloads them. (D-15)
+
+---
+
 ## [1.2.0] — 2026-09-11 — Shipment Database, AWB-first advices, billing party
 
 The advice tabs now start from the AWB. The day's manifest is pasted into a new

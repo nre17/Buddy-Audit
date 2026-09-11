@@ -547,6 +547,25 @@ module.exports = {
       } finally { await app.close(); }
     },
 
+    "on a browser's first open the sample shipments are already loaded, and clearing them sticks": async (h) => {
+      const app = await h.openApp({ firstOpen: true });
+      try {
+        h.eq(await app.page.evaluate(() => SH.items.length), 10, "ten sample shipments on first open");
+        await h.tab(app.page, "Shipment Database");
+        h.contains(await text(app.page, "#sh_loadedtitle"), "(10)", "listed on the Shipment Database tab");
+        await h.tab(app.page, "Export Advice");
+        await app.page.fill("#a_mawb", "780-30901001");
+        await app.page.waitForTimeout(200);
+        h.eq(await val(app.page, "a_wt"), "312.5", "an AWB fills in straight away");
+        await h.tab(app.page, "Shipment Database");
+        await app.page.click("#sh_clear");
+        await app.page.waitForTimeout(200);
+        await app.page.reload({ waitUntil: "load" });
+        await app.page.waitForTimeout(400);
+        h.eq(await app.page.evaluate(() => SH.items.length), 0, "cleared shipments are not loaded again on the next open");
+      } finally { await app.close(); }
+    },
+
     "loaded shipments survive a reload and can be cleared": async (h) => {
       const { app } = await withManifest(h, [exportRow(h), importRow(h)]);
       try {

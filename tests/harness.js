@@ -117,6 +117,11 @@ function notContains(haystack, needle, message) {
  *                                   acceptance/departure times need a fixed zone.
  * @param {object}  opts.seed        optional object written to localStorage
  *                                   BEFORE the app boots, to test migrations.
+ * @param {boolean} opts.firstOpen   leave the Shipment Database untouched, as on a
+ *                                   browser's first open, when the app loads its
+ *                                   sample shipments. Otherwise every spec starts
+ *                                   with an empty Shipment Database, so the samples
+ *                                   never mix into a spec's own manifest.
  */
 async function openApp(opts) {
   opts = opts || {};
@@ -127,6 +132,15 @@ async function openApp(opts) {
   const context = await browser.newContext({
     timezoneId: opts.timezoneId || "Asia/Dubai",
   });
+  if (!opts.firstOpen) {
+    await context.addInitScript(() => {
+      try {
+        if (localStorage.getItem("solitair_shipments_v1") === null) {
+          localStorage.setItem("solitair_shipments_v1", JSON.stringify({ items: [] }));
+        }
+      } catch (e) { /* not the app's page */ }
+    });
+  }
   const page = await context.newPage();
 
   const consoleErrors = [];
