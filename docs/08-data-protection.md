@@ -74,8 +74,10 @@ browser only.
 
 ### 2.4 Company and bank details
 
-`CFG.company.trn` and the whole of `CFG.bank` are the string `"Not configured"`
-in source. They are **site configuration, not code**.
+`CFG.company.trn` is the string `"Not configured"` in source, and `CFG.bank`
+holds invented sample bank details: a bank name and account numbers that belong to
+no real bank, written so the repository guard's IBAN and BIC rules do not match
+them (decision D-16). Real details never go in the file. They are **site configuration, not code**.
 
 Values are entered once per counter machine under
 **Rates & Data → Company & Bank Details**, saved to that browser's
@@ -87,8 +89,8 @@ This is the same override pattern already used for tariff rates, free-storage
 hours and the staff list.
 
 > **Operational consequence.** A freshly cloned copy of the application prints
-> `Not configured` where the TRN and bank blocks belong. That is correct and
-> intended. Configure it before use — see
+> `Not configured` for the TRN, and the invented sample bank details, which the
+> advice does not mark as invented. That is intended for the prototype. Configure it before use — see
 > [`06-operations-runbook.md`](06-operations-runbook.md) section 0.
 
 ### 2.5 The tariff

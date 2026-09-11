@@ -100,5 +100,47 @@ module.exports = {
         h.eqMoney(await app.page.$eval("#cashchip", (e) => e.textContent), 0, "cash recalculated");
       } finally { await app.close(); }
     },
+
+    "a handover with an invalid amount keeps the dialog open to correct it": async (h) => {
+      const app = await h.openApp();
+      try {
+        await h.tab(app.page, "Invoice Register");
+        await app.page.click("#btnHandover");
+        await app.page.waitForTimeout(150);
+        await app.page.fill("#ho_amt", "0");
+        await h.modalClick(app.page, "Record Handover");
+        h.eq(await app.page.evaluate(() => document.getElementById("modal").style.display), "flex", "the dialog stays open");
+        h.contains(await app.page.evaluate(() => document.getElementById("toast").textContent), "Enter an amount", "and says why");
+        h.eq((await h.db(app.page)).entries.length, 0, "nothing recorded");
+      } finally { await app.close(); }
+    },
+
+    "Export Register to Excel downloads the workbook with its balances": async (h) => {
+      const app = await h.openApp();
+      try {
+        await h.fillAdvice(app.page, "export", { cust: h.SAMPLE_CUSTOMER.name, mawb: "780-30100605", wt: 100, pcs: 5 });
+        await h.saveAdvice(app.page, "export");
+        const b = await app.page.evaluate(() => runningBalances());
+        h.eqMoney(b.cash, 84, "cash on hand");
+        h.eqMoney(b.sales, 84, "sales");
+        h.eq(b.count, 1, "invoice count");
+        await h.tab(app.page, "Invoice Register");
+        const [download] = await Promise.all([app.page.waitForEvent("download"), app.page.click("#btnXls")]);
+        h.assert(/^SolitAir_Invoice_Register_\d{8}_\d{4}\.xlsx$/.test(download.suggestedFilename()), "an .xlsx file (" + download.suggestedFilename() + ")");
+        app.assertNoErrors();
+      } finally { await app.close(); }
+    },
+
+    "sample data carries local times": async (h) => {
+      const app = await h.openApp();
+      try {
+        const gap = await app.page.evaluate(() => {
+          seedDemo();
+          const e = DB.entries.find((x) => x.id.indexOf("SEED0") === 0);
+          return Math.round((new Date(e.ts) - new Date(e.t2)) / 36e5 * 10) / 10;
+        });
+        h.eq(gap, 2, "departure two hours before the record, in local time");
+      } finally { await app.close(); }
+    },
   },
 };

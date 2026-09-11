@@ -89,5 +89,41 @@ module.exports = {
           "the duplicate must be skipped, only the new AWB added");
       } finally { await app.close(); }
     },
+
+    "an AWB received without its dashes matches its invoice, and the portal is current when opened": async (h) => {
+      const app = await h.openApp();
+      try {
+        await h.tab(app.page, "Facility Security");
+        await app.page.fill("#sec_awb", "78030100607");
+        await app.page.click("#sec_add");
+        await app.page.waitForTimeout(150);
+        h.contains(await app.page.$eval("#sec_tbl tbody", (e) => e.textContent), "NOT INVOICED", "not invoiced yet");
+        await h.fillAdvice(app.page, "export", { cust: h.SAMPLE_CUSTOMER.name, mawb: "780-30100607", wt: 100, pcs: 5 });
+        await h.saveAdvice(app.page, "export");
+        await h.tab(app.page, "Facility Security");
+        const row = await app.page.$eval("#sec_tbl tbody", (e) => e.textContent);
+        h.contains(row, "Invoiced", "780-30100607 on the register matches 78030100607 received");
+        h.notContains(row, "NOT INVOICED", "no stale alert");
+        await app.page.fill("#sec_awb", "780-30100607");
+        await app.page.click("#sec_add");
+        await app.page.waitForTimeout(150);
+        h.contains(await app.page.evaluate(() => document.getElementById("toast").textContent), "already on the reception list", "the same AWB with dashes is a duplicate");
+      } finally { await app.close(); }
+    },
+
+    "the reception list shows the newest AWB first within a flow": async (h) => {
+      const app = await h.openApp();
+      try {
+        const first = await app.page.evaluate(() => {
+          DB.sec = [
+            { id: "S1", awb: "780-30100608", dir: "Export", by: "", ts: "2026-09-01T08:00:00.000Z", ack: false },
+            { id: "S2", awb: "780-30100609", dir: "Export", by: "", ts: "2026-09-02T08:00:00.000Z", ack: false },
+          ];
+          renderSecurity();
+          return document.querySelector("#sec_tbl tbody tr").textContent;
+        });
+        h.contains(first, "780-30100609", "the later reception is listed first");
+      } finally { await app.close(); }
+    },
   },
 };

@@ -84,6 +84,9 @@ module.exports = {
         h.contains(await h.saveAdvice(app.page, "export"), "Invoice saved", "an export invoice");
         await app.page.evaluate(() => {
           DB.sec = [{ id: "SEC_TEST_1", awb: "780-30100095", dir: "Export", by: "Gate", ts: new Date().toISOString(), ack: false }];
+          DB.rates = { ex_accept: { rate: 99 } }; applyRateOverrides();
+          DB.freeHours = { general: 12, perishable: 3 }; CFG.freeHours.general = 12; CFG.freeHours.special = 12; CFG.freeHours.perishable = 3;
+          DB.bank = { name: "Test Account Holder", aed: { bank: "Test Bank" }, usd: {} }; applySiteOverrides();
           save();
         });
         h.eq(await app.page.evaluate(() => [DB.entries.length, LL.items.length, DB.sec.length].join()), "1,1,1",
@@ -105,6 +108,11 @@ module.exports = {
         h.eq(s.regRows, 0, "the register lists nothing");
         h.contains(s.lying, "No cargo lying in the warehouse", "the lying list is empty");
         h.contains(s.security, "No reception records yet", "the security portal is empty");
+        const settings = await app.page.evaluate(() => [
+          EXPORT_LINES.find((l) => l.id === "ex_accept").rate === RATES_SHIPPED.ex_accept.rate,
+          CFG.freeHours.general === CFG_SHIPPED.freeHours.general && CFG.freeHours.perishable === CFG_SHIPPED.freeHours.perishable,
+          CFG.bank.name === CFG_SHIPPED.bank.name && CFG.bank.aed.bank === CFG_SHIPPED.bank.aed.bank].join());
+        h.eq(settings, "true,true,true", "the shipped tariff, free hours and bank details are back straight away, not only after reopening");
 
         await app.page.reload({ waitUntil: "load" });
         await app.page.waitForTimeout(500);
