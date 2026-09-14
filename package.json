@@ -1,6 +1,6 @@
 {
   "name": "solitair-invoicing",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Local cargo operations workspace with modular source, shipment-to-invoice workflows and durable disk snapshots",
   "packageManager": "pnpm@11.19.0",
@@ -9,12 +9,13 @@
     "start": "node tools/launch.mjs",
     "dev": "node tools/launch.mjs",
     "serve": "node tools/server.mjs",
-    "test": "node tools/build.mjs && node --test tests/server.test.js && node tests/run-all.js",
+    "test": "node tools/build.mjs && node --test tests/server.test.js tests/bookings.test.js && node tests/run-all.js",
     "test:browser": "node tests/run-all.js",
     "test:server": "node --test tests/server.test.js",
+    "test:domain": "node --test tests/bookings.test.js",
     "test:one": "node tests/run-all.js",
     "scan": "node tools/pii-scan.js",
-    "verify": "node tools/pii-scan.js && node tools/build.mjs && node --test tests/server.test.js && node tests/run-all.js",
+    "verify": "node tools/pii-scan.js && node tools/build.mjs && node --test tests/server.test.js tests/bookings.test.js && node tests/run-all.js",
     "customers": "python3 tools/generate-customers.py > fixtures/customers.demo.json",
     "open": "node tools/launch.mjs"
   },

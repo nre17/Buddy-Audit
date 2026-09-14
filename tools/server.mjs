@@ -3,6 +3,7 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { validateBookingPlanner } from '../src/domain/bookings.mjs';
 
 export const APPLICATION_ID = 'solitair-local-workspace';
 const PROJECT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,7 +23,7 @@ export function workspaceIdentity(projectDir, dataDir) {
   return hash(`${path.resolve(projectDir)}\n${path.resolve(dataDir)}`).slice(0, 24);
 }
 
-/** Structural guard; the client owns domain-specific validation and migrations. */
+/** Bounded envelope validation, plus the shared booking domain schema. */
 export function validateSnapshot(snapshot) {
   const invalid = (message) => { throw new HttpError(400, 'invalid_snapshot', message); };
   if (!isObject(snapshot) || snapshot.format !== 'solitair-workspace' || snapshot.version !== 1) invalid('Expected a version 1 SolitAir workspace snapshot.');
@@ -54,6 +55,10 @@ export function validateSnapshot(snapshot) {
     } else if (!['string', 'number', 'boolean'].includes(typeof value) && value !== null) invalid('The workspace must contain only JSON values.');
   }
   visit(snapshot, 0);
+  if (snapshot.db.bookingPlanner !== undefined) {
+    try { validateBookingPlanner(snapshot.db.bookingPlanner); }
+    catch (error) { invalid(error.message); }
+  }
   return snapshot;
 }
 
@@ -97,6 +102,27 @@ async function syncDirectory(directory) {
   finally { await handle?.close(); }
 }
 
+async function replaceAtomic(temporary, filename) {
+  // A Windows file scanner or another short-lived reader can deny replacement
+  // after both of our handles are closed. Retry the same rename, never an
+  // unlink/copy fallback: the previous complete snapshot stays in place.
+  const delays = [25, 50, 100, 200, 400];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fs.rename(temporary, filename);
+      if (attempt) console.warn('Workspace atomic replacement recovered after a filesystem retry:', path.basename(filename), `(${attempt} retries)`);
+      return;
+    } catch (error) {
+      if (!['EPERM', 'EACCES', 'EBUSY'].includes(error.code) || attempt >= delays.length) throw error;
+      // A directory or an inaccessible path is a structural fault, not a
+      // replaceable file. Surface it immediately rather than delaying a retry.
+      try { if (!(await fs.stat(filename)).isFile()) throw error; }
+      catch (inspectionError) { if (inspectionError.code !== 'ENOENT') throw error; }
+      await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+    }
+  }
+}
+
 async function writeAtomic(filename, content) {
   const temporary = `${filename}.${randomUUID()}.tmp`;
   let renamed = false;
@@ -104,7 +130,7 @@ async function writeAtomic(filename, content) {
     const handle = await fs.open(temporary, 'wx', 0o600);
     try { await handle.writeFile(content, 'utf8'); await handle.sync(); }
     finally { await handle.close(); }
-    await fs.rename(temporary, filename);
+    await replaceAtomic(temporary, filename);
     renamed = true;
     // A metadata flush failure after rename must not falsely report a rolled-back write.
     try { await syncDirectory(path.dirname(filename)); }
@@ -157,7 +183,10 @@ async function createStore(dataDir, maxBytes, backupLimit) {
             await pruneBackups();
           }
           await writeAtomic(filename, text);
-        } catch { throw new HttpError(507, 'storage_write_failed', 'The workspace could not be saved to disk. Your previous snapshot has been preserved.'); }
+        } catch (error) {
+          console.error('Workspace disk write failed:', error.code || error.name, error.syscall || 'unknown operation', path.basename(error.dest || error.path || filename));
+          throw new HttpError(507, 'storage_write_failed', 'The workspace could not be saved to disk. Your previous snapshot has been preserved.');
+        }
         state = next;
         storedText = text;
         if (state.revision > 1) {

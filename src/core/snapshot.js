@@ -1,3 +1,5 @@
+import { createBookingPlanner, validateBookingPlanner } from '../domain/bookings.mjs';
+
 export const SNAPSHOT_FORMAT = 'solitair-workspace';
 
 function object(value, name) {
@@ -43,6 +45,7 @@ export function validateSnapshot(snapshot) {
   if (snapshot.db.staffList !== undefined && (!Array.isArray(snapshot.db.staffList) || snapshot.db.staffList.some(x => typeof x !== 'string'))) throw new Error('Invalid staff list');
   if (snapshot.db.logo && !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=\s]+$/.test(snapshot.db.logo)) throw new Error('Backup logo must be a PNG, JPEG or WebP image');
   numericFields(snapshot.db, ['openingBalance'], 'Workspace');
+  if (snapshot.db.bookingPlanner !== undefined) validateBookingPlanner(snapshot.db.bookingPlanner);
   for (const field of ['rates', 'freeHours', 'company', 'bank']) if (snapshot.db[field] != null) object(snapshot.db[field], field);
   if (snapshot.db.rates) for (const [id, rate] of Object.entries(snapshot.db.rates)) {object(rate, 'Tariff override'); numericFields(rate, ['rate', 'min'], id);}
   if (snapshot.db.freeHours) numericFields(snapshot.db.freeHours, ['general', 'special', 'perishable'], 'Storage rules');
@@ -90,6 +93,7 @@ export function migrateSnapshot(input) {
   next.db.sec ??= []; next.db.rates ??= {};
   next.db.openingBalance ??= 0; next.db.openingNote ??= ''; next.db.openingDate ??= '';
   next.db.customers = [];
+  if (next.db.bookingPlanner === undefined) next.db.bookingPlanner = createBookingPlanner();
   for (const entry of next.db.entries) {
     entry.type ??= entry.amount !== undefined && entry.mawb === undefined ? 'handover' : 'invoice';
     if (entry.type === 'invoice' && entry.billTo === undefined) {

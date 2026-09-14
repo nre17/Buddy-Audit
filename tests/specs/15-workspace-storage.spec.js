@@ -109,6 +109,10 @@ module.exports = {
         await h.fillAdvice(app.page, "import", { mawb: "780-30909701", cust: h.SAMPLE_CUSTOMER.name,
           wt: 100, pcs: 2, t1: "2026-09-14T08:00", t2: "2026-09-14T10:00" });
         h.contains(await h.saveAdvice(app.page, "import"), "Invoice saved");
+        h.assert(await app.page.evaluate(customer => SolitAir.bookingCommand('create', {
+          direction: 'Import', awb: '780-30909701', customer, origin: 'ISU', destination: 'DWC', pieces: 2, weight: 100,
+          slotStart: '2099-09-14T08:00', slotEnd: '2099-09-14T09:00', source: 'synthetic-demo',
+        }), h.SAMPLE_CUSTOMER.name), 'booking saved before backup');
         await app.page.evaluate(() => {
           SolitAir.SH.items = [{ awb: "780-30909702", key: "78030909702", org: "DWC", dst: "ISU", fltno: "ZZ 907",
             dep: "2099-09-14T12:00", rcf: "", shc: "GEN", nog: "Demo cargo", pcs: 2, wt: 100, cust: "", importedAt: Date.now(), source: "manifest" }];
@@ -125,6 +129,7 @@ module.exports = {
         for await (const chunk of stream) chunks.push(chunk);
         const backup = JSON.parse(Buffer.concat(chunks).toString("utf8"));
         h.eq(backup.db.entries.length, 1); h.eq(backup.shipments.items.length, 1);
+        h.eq(backup.db.bookingPlanner.bookings.length, 1);
         h.eq(backup.warehouse.items.length, 1); h.eq(backup.warehouse.cleared.length, 1); h.eq(backup.warehouse.removed.length, 1);
         delete backup.db.entries[0].type; delete backup.db.entries[0].billTo; delete backup.db.entries[0].billTrn; delete backup.db.entries[0].billAddr;
         backup.db.sec = [{ awb: "780-30909701", dir: "Import", by: "ACC", ts: "2026-09-14T08:00:00.000Z", ack: false }];
@@ -139,6 +144,7 @@ module.exports = {
           h.eq(snapshot.db.entries[0].billTo, h.SAMPLE_CUSTOMER.name, "legacy billing migrated immediately");
           h.assert(!!snapshot.db.sec[0].id, "security identity migrated immediately");
           h.eq(snapshot.db.openingNote, "Roundtrip marker");
+          h.eq(JSON.stringify(snapshot.db.bookingPlanner), JSON.stringify(backup.db.bookingPlanner), 'booking, policy and history restored');
           h.eq(JSON.stringify(snapshot.shipments), JSON.stringify(backup.shipments), "manifest restored");
           h.eq(JSON.stringify(snapshot.warehouse), JSON.stringify(backup.warehouse), "warehouse and histories restored");
         };
@@ -147,6 +153,26 @@ module.exports = {
         await app.page.reload({ waitUntil: "load" }); await waitReady(app.page); await check();
         app.assertNoErrors();
       } finally { await app.close(); }
+    },
+
+    "booking command reaches disk and survives a new browser session": async (h) => {
+      const f = await diskFixture();
+      try {
+        const page = await f.open();
+        h.assert(await page.evaluate(customer => SolitAir.bookingCommand('create', {
+          direction: 'Export', awb: '780-30909705', customer, origin: 'DWC', destination: 'ISU', pieces: 8, weight: 230,
+          slotStart: '2099-09-14T08:00', slotEnd: '2099-09-14T09:00', source: 'synthetic-demo',
+          coordination: { customs: true, owner: 'Test operator', note: 'Awaiting inspection arrangement' },
+        }), h.SAMPLE_CUSTOMER.name));
+        await waitSaved(page);
+        const expected = await page.evaluate(() => SolitAir.bookingPlanner());
+        h.eq(JSON.stringify((await readRemote(f.server)).snapshot.db.bookingPlanner), JSON.stringify(expected));
+        await page.context().close();
+        const fresh = await f.open();
+        h.eq(JSON.stringify(await fresh.evaluate(() => SolitAir.bookingPlanner())), JSON.stringify(expected));
+        await fresh.locator('[data-ws-route="bookings-export"]').click();
+        h.eq(await fresh.locator('#p-bookings-export').evaluate(node => node.classList.contains('on')), true);
+      } finally { await f.close(); }
     },
 
     "malformed restores leave both runtime state and recovery cache unchanged": async (h) => {

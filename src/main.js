@@ -17,12 +17,15 @@ import './data/demo.js';
 import './features/handover.js';
 import './features/warehouse.js';
 import './features/security.js';
+import './core/booking-commands.js';
+import './features/bookings.js';
 import './core/boot.js';
 import { app } from './core/runtime.js';
 import { startApplication } from './core/boot.js';
 import { prepareStorage, installPersistence, finishStorageBoot, showStartupError } from './core/workspace-storage.js';
 import './styles/base.css';
 import './styles/workspace.css';
+import './styles/bookings.css';
 import { mountWorkspace } from './ui/shell.js';
 
 try {
