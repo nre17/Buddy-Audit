@@ -1,5 +1,7 @@
 # Operations Runbook
 
+> Historical prototype reference (baseline `f0f0fdb`). The owner authorized a full revamp. Single-file, deployment, storage and governance instructions here are superseded; use the [current review](revamp/README.md) and [root README](../README.md). Treat business rules as baseline evidence and verify current behavior in source/tests.
+
 For whoever owns the counter system day to day. Written for a non-developer.
 
 ---

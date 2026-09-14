@@ -3,6 +3,18 @@
 All notable changes to the SolitAir charge advice and invoicing system.
 Newest first.
 
+## [2.0.0] — 2026-09-14 — Cargo workspace revamp
+
+- Replaced the single HTML source with ES modules, separate styles/data, an esbuild bundle and a Windows build-and-open launcher.
+- Added grouped navigation, overview, search, connected AWB drawers, browser history and responsive layouts.
+- Added a loopback server with atomic disk snapshots, revision conflicts, exclusive workspace ownership and retained previous revisions.
+- Unified invoice/settings, shipment and warehouse backups; validated restore and immediate legacy migrations; separate sandbox/recovery caches bound to workspace identity.
+- Fixed invalid shipment/financial input handling, failed-save acknowledgement, manifest numeric/date errors and stale advice values after reimport.
+- Added direction-aware security reconciliation, actual row selection, safer restored-content rendering and CSV formula protection.
+- Added architecture/domain/product audits, a system knowledge map and a prioritized roadmap. Existing tariff values are unchanged.
+
+The source remains a local prototype. Shared runtime/domain extraction, immutable financial history, formal acceptance, ULD inventory, authoritative customer/users and ERP integration are further work.
+
 ---
 
 ## [1.3.0] — 2026-09-11 — Bank details for payment, final bug sweep

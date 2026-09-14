@@ -1,5 +1,7 @@
 # Business Rules
 
+> Historical prototype reference (baseline `f0f0fdb`). The owner authorized a full revamp. Single-file, deployment, storage and governance instructions here are superseded; use the [current review](revamp/README.md) and [root README](../README.md). Treat business rules as baseline evidence and verify current behavior in source/tests.
+
 The commercial logic of the system. Every figure below is transcribed from
 `EXPORT_LINES` / `IMPORT_LINES` in `app/solitair-invoicing.html` (line range in `04-code-map.md`)
 and is asserted by `tests/specs/03-charges.spec.js`.

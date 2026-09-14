@@ -1,21 +1,29 @@
 {
   "name": "solitair-invoicing",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Offline single-file charge advice and invoicing system for the SolitAir Cargo counter at DWC",
+  "description": "Local cargo operations workspace with modular source, shipment-to-invoice workflows and durable disk snapshots",
+  "packageManager": "pnpm@11.19.0",
   "scripts": {
-    "test": "node tests/run-all.js",
-    "test:one": "node",
+    "build": "node tools/build.mjs",
+    "start": "node tools/launch.mjs",
+    "dev": "node tools/launch.mjs",
+    "serve": "node tools/server.mjs",
+    "test": "node tools/build.mjs && node --test tests/server.test.js && node tests/run-all.js",
+    "test:browser": "node tests/run-all.js",
+    "test:server": "node --test tests/server.test.js",
+    "test:one": "node tests/run-all.js",
     "scan": "node tools/pii-scan.js",
-    "verify": "node tools/pii-scan.js && node tests/run-all.js",
+    "verify": "node tools/pii-scan.js && node tools/build.mjs && node --test tests/server.test.js && node tests/run-all.js",
     "customers": "python3 tools/generate-customers.py > fixtures/customers.demo.json",
-    "open": "node -e \"console.log('file://' + require('path').resolve('app/solitair-invoicing.html'))\""
+    "open": "node tools/launch.mjs"
   },
   "devDependencies": {
-    "playwright": "^1.47.0"
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13.0"
   },
   "license": "UNLICENSED"
 }

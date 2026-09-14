@@ -1,5 +1,7 @@
 # Code Map
 
+> Historical prototype reference (baseline `f0f0fdb`). The owner authorized a full revamp. Single-file, deployment, storage and governance instructions here are superseded; use the [current review](revamp/README.md) and [root README](../README.md). Treat business rules as baseline evidence and verify current behavior in source/tests.
+
 Navigation aid for `app/solitair-invoicing.html` (6,151 lines).
 
 > Line numbers verified against the file on 11 September 2026.

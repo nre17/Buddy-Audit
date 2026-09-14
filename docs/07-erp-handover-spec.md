@@ -1,5 +1,7 @@
 # Process Specification for ERP Implementation
 
+> Historical prototype reference (baseline `f0f0fdb`). The owner authorized a full revamp. Single-file, deployment, storage and governance instructions here are superseded; use the [current review](revamp/README.md) and [root README](../README.md). Treat business rules as baseline evidence and verify current behavior in source/tests.
+
 **Prepared by:** SolitAir Cargo Express Services DWC-LLC, Ground Operations
 **Purpose:** describe, precisely enough to be rebuilt, the cargo counter charge
 advice and invoicing process as it currently operates at DWC.
