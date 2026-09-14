@@ -261,7 +261,27 @@ module.exports = {
         h.eq(await fixture.diskText(), diskBefore, "the prior snapshot file is byte-for-byte intact");
         h.eq(cache.pending, true); h.eq(cache.snapshot.db.openingNote, "Pending disk recovery");
         await restoreDisk();
-        await page.reload({ waitUntil: "load" }); await waitReady(page); await waitSaved(page);
+        // Hold the recovery PUT before it reaches disk: startup must never
+        // report saved merely because the recovered content is already cached.
+        let releaseRecovery;
+        const recoveryGate = new Promise(resolve => { releaseRecovery = resolve; });
+        const recoveryRequest = page.waitForRequest(request => request.url().endsWith('/api/snapshot') && request.method() === 'PUT', { timeout: 10000 });
+        recoveryRequest.catch(() => {}); // The awaited original still fails the test if boot never sends recovery.
+        const holdRecovery = async route => {
+          if (route.request().method() === 'PUT') await recoveryGate;
+          await route.continue();
+        };
+        await page.route('**/api/snapshot', holdRecovery);
+        try {
+          await page.reload({ waitUntil: "load" }); await waitReady(page); await recoveryRequest;
+          h.eq(await page.evaluate(() => SolitAir.storageStatus.kind), 'saving', 'pending recovery must stay visibly unsaved until disk acknowledgement');
+          h.eq((await readRemote(fixture.server)).snapshot.db.openingNote, before.snapshot.db.openingNote, 'held recovery has not reached disk');
+          h.eq((await cacheOf(page)).pending, true);
+        } finally {
+          releaseRecovery();
+          await page.unrouteAll({ behavior: 'wait' });
+        }
+        await waitSaved(page);
         const recovered = await readRemote(fixture.server);
         h.eq(recovered.snapshot.db.openingNote, "Pending disk recovery", "restart sends the recovered local snapshot");
         h.assert(recovered.revision > before.revision); h.eq((await cacheOf(page)).pending, false);

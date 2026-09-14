@@ -10,6 +10,7 @@ Newest first.
 - Captured an optional company late policy per booking. Charges remain disabled initially; configured amounts become review proposals after actual arrival and never post to invoices or revenue. Waivers retain reasons and original assessments.
 - Added pure booking commands, shared client/server validation, attributed history, backup migration and disk recovery coverage.
 - Added bounded retries for temporary filesystem denials during atomic snapshot replacement, with preservation checks for persistent failures.
+- Pending recovery and disk retries remain visibly unsaved until the server acknowledges the write.
 - Documented dnata's public appointment model and unverified commercial terms. Added a separate ULD reconciliation exploration and proposed document-pack pilot; no email ingestion is implemented.
 
 This is an internal local prototype. Customers do not submit bookings through a public portal, and no ERP or authority-system integration is activated.
