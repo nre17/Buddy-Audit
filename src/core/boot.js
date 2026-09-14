@@ -91,6 +91,7 @@ app.boot = function boot(){
   app.buildDash();
   app.buildAdmin();
   app.buildSecurity();
+  app.buildBookings();
   app.refreshChip();
 };
 

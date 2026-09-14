@@ -4,6 +4,8 @@ Start with [the current revamp review](revamp/README.md) and [the system / recor
 
 The three review reports cover [architecture](revamp/architecture-audit.md), [domain and ingestion](revamp/domain-audit.md), and [product design](revamp/product-design.md). Baseline findings identify the old source revision; the integrated review distinguishes completed fixes from future work.
 
+The implemented [booking desk](bookings/README.md) has its own workflow and [dnata source reference](bookings/dnata-reference.md). [ULD reconciliation](uld/exploration.md) remains a research proposal with a separate evidence model and bounded pilot.
+
 Numbered documents `01`–`09` are retained as historical source material from the original prototype. Their single-file, deployment, backup, privacy and governance instructions are superseded by the owner's revamp direction and current documentation. The business-rule and data-model descriptions remain useful evidence, but code and current tests determine implemented behavior.
 
 Do not treat the old ERP handover specification as a completed integration contract. Formal acceptance, ULD management, settlement and an authoritative customer/user model still require explicit design and implementation.

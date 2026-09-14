@@ -1,6 +1,7 @@
 import { app } from './runtime.js';
+import packageInfo from '../../package.json';
 
-app.APP_VERSION = "2.0.0";
+app.APP_VERSION = packageInfo.version;
 
 app.CFG = {
   company: {

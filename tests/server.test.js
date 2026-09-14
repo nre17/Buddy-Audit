@@ -92,6 +92,32 @@ test('all three stores survive an atomic save and process restart', async t => {
   assert.match(disk.sha256, /^[a-f0-9]{64}$/);
 });
 
+test('booking domain state survives restart and malformed booking restores are rejected atomically', async t => {
+  const f = await fixture(t);
+  const { createBookingPlanner, createBooking } = await import('../src/domain/bookings.mjs');
+  const value = snapshot('Booking roundtrip');
+  value.db.bookingPlanner = createBooking(createBookingPlanner(), {
+    direction: 'Export', awb: '780-30901234', customer: 'Synthetic test customer', origin: 'DWC', destination: 'ISU',
+    pieces: 4, weight: 120, slotStart: '2026-09-14T14:00', slotEnd: '2026-09-14T15:00', source: 'synthetic-demo',
+  }, { now: '2026-09-14T08:00:00.000Z', actor: 'Test operator', id: 'booking-roundtrip' });
+  assert.equal((await put(f.app, 0, value)).status, 200);
+  await f.restart();
+  assert.deepEqual((await request(f.app, '/api/snapshot')).json().snapshot.db.bookingPlanner, value.db.bookingPlanner);
+  const variants = [
+    planner => { planner.bookings[0].weight = -1; },
+    planner => { planner.bookings[0].slotEnd = planner.bookings[0].slotStart; },
+    planner => { planner.bookings[0].status = 'accepted'; },
+    planner => { planner.latePolicy.enabled = 'yes'; },
+    planner => { planner.bookings[0].coordination.police = 'confirmed'; },
+  ];
+  for (const mutate of variants) {
+    const bad = structuredClone(value); mutate(bad.db.bookingPlanner);
+    assert.equal((await put(f.app, 1, bad)).status, 400);
+  }
+  assert.equal((await put(f.app, 1, { ...value, db: { ...value.db, bookingPlanner: null } })).status, 400);
+  assert.deepEqual((await request(f.app, '/api/snapshot')).json(), { revision: 1, snapshot: value });
+});
+
 test('concurrent saves from one revision commit once and return a conflict for the other', async t => {
   const f = await fixture(t);
   const responses = await Promise.all([put(f.app, 0, snapshot('First')), put(f.app, 0, snapshot('Second'))]);
@@ -198,6 +224,61 @@ test('failed disk writes preserve the previous revision and do not poison later 
   assert.equal((await put(f.app, 1, snapshot('Recovered save'))).status, 200);
   await f.restart();
   assert.equal((await request(f.app, '/api/snapshot')).json().revision, 2);
+});
+
+test('temporary atomic-rename denials retry the same file and preserve the prior snapshot until commit', async t => {
+  const f = await fixture(t);
+  assert.equal((await put(f.app, 0, snapshot('Before temporary lock'))).status, 200);
+  const target = path.join(f.dataDir, 'snapshot.json'), before = await fs.readFile(target, 'utf8');
+  const rename = fs.rename, sources = new Set();
+  let attempts = 0;
+  fs.rename = async (source, destination) => {
+    if (destination === target && source.startsWith(target + '.') && source.endsWith('.tmp')) {
+      sources.add(source); attempts++;
+      if (attempts <= 2) {
+        assert.equal(await fs.readFile(target, 'utf8'), before, 'old complete snapshot remains readable during the denial');
+        throw Object.assign(new Error('Test fault: temporary Windows sharing denial'), { code: attempts === 1 ? 'EPERM' : 'EBUSY', syscall: 'rename', path: source, dest: destination });
+      }
+    }
+    return rename(source, destination);
+  };
+  try {
+    const response = await put(f.app, 1, snapshot('After temporary lock'));
+    assert.equal(response.status, 200, response.text);
+  } finally { fs.rename = rename; }
+  assert.equal(attempts, 3); assert.equal(sources.size, 1, 'one fsynced temporary file is retried, not rewritten or copied');
+  assert.equal((await request(f.app, '/api/snapshot')).json().revision, 2);
+  const backups = (await fs.readdir(path.join(f.dataDir, 'backups'))).filter(name => name.endsWith('.backup.json'));
+  assert.equal(backups.length, 1);
+  assert.equal(await fs.readFile(path.join(f.dataDir, 'backups', backups[0]), 'utf8'), before);
+  await f.restart();
+  assert.equal((await request(f.app, '/api/snapshot')).json().snapshot.db.openingNote, 'After temporary lock');
+});
+
+test('persistent atomic-rename denial is bounded and remains recoverable without a false save', async t => {
+  const f = await fixture(t);
+  assert.equal((await put(f.app, 0, snapshot('Before persistent lock'))).status, 200);
+  const target = path.join(f.dataDir, 'snapshot.json'), before = await fs.readFile(target, 'utf8');
+  const rename = fs.rename;
+  let attempts = 0;
+  fs.rename = async (source, destination) => {
+    if (destination === target && source.startsWith(target + '.') && source.endsWith('.tmp')) {
+      attempts++;
+      throw Object.assign(new Error('Test fault: persistent replacement denial'), { code: 'EACCES', syscall: 'rename', path: source, dest: destination });
+    }
+    return rename(source, destination);
+  };
+  try {
+    const response = await put(f.app, 1, snapshot('Must stay uncommitted'));
+    assert.equal(response.status, 507); assert.equal(response.json().code, 'storage_write_failed');
+  } finally { fs.rename = rename; }
+  assert.equal(attempts, 6, 'finite retry budget is exhausted rather than suppressing the failure');
+  assert.equal(await fs.readFile(target, 'utf8'), before);
+  assert.equal((await request(f.app, '/api/snapshot')).json().revision, 1);
+  assert.equal((await fs.readdir(f.dataDir)).filter(name => name.endsWith('.tmp')).length, 0);
+  assert.equal((await put(f.app, 1, snapshot('Recovered after denial'))).status, 200);
+  await f.restart();
+  assert.equal((await request(f.app, '/api/snapshot')).json().snapshot.db.openingNote, 'Recovered after denial');
 });
 
 test('one process owns a data directory even when another server chooses another port', async t => {

@@ -78,7 +78,7 @@ app.buildAdmin = function buildAdmin(){
      + '<button class="btn" id="btnSeed">Load Sample Data</button>'
      + '<button class="btn dgr" id="btnWipe">Erase All Data</button>'
      + '</div>'
-     + '<p class="hint" style="margin-bottom:0">Workspace backups include invoices, manifests, warehouse history, reception records and settings. The status bar confirms disk saves; keep separate backup copies for recovery from a device failure. Records held: <b id="dbcount">0</b>. Application version <b>'+app.esc(app.APP_VERSION)+'</b>.</p>'
+     + '<p class="hint" style="margin-bottom:0">Workspace backups include bookings, invoices, manifests, warehouse history, reception records and settings. The status bar confirms disk saves; keep separate backup copies for recovery from a device failure. Ledger records held: <b id="dbcount">0</b>. Application version <b>'+app.esc(app.APP_VERSION)+'</b>.</p>'
      + '</div></div>';
 
   h += '</div>';
@@ -169,7 +169,9 @@ app.buildAdmin = function buildAdmin(){
     r.onload=function(){
       try{
         var raw=JSON.parse(r.result), o=migrateSnapshot(raw);
-        app.modal("Restore backup?","<p>This replaces this workspace with " + o.db.entries.length + " ledger records, " + o.shipments.items.length + " shipments and " + o.warehouse.items.length + " warehouse items.</p>" + (!raw.format ? "<p>This is a legacy register-only backup. It contains no shipment manifest or warehouse history.</p>" : ""),
+        var original = raw.snapshot && Number.isInteger(raw.revision) ? raw.snapshot : raw;
+        var hasBookings = original.db ? original.db.bookingPlanner !== undefined : original.bookingPlanner !== undefined;
+        app.modal("Restore backup?","<p>This replaces this workspace with " + o.db.entries.length + " ledger records, " + o.shipments.items.length + " shipments, " + o.warehouse.items.length + " warehouse items and " + o.db.bookingPlanner.bookings.length + " bookings.</p>" + (!original.format ? "<p>This is a legacy register-only backup. It contains no shipment manifest or warehouse history.</p>" : "") + (!hasBookings ? "<p>This older backup has no booking planner. Existing bookings and booking settings will be cleared.</p>" : ""),
           [{label:"Cancel"},{label:"Restore", cls:"pri", fn:function(){
             if(!app.restoreWorkspace(o)) return false;
             app.toast("Backup restored","ok");
@@ -183,7 +185,7 @@ app.buildAdmin = function buildAdmin(){
       [{label:"Cancel"},{label:"Load", cls:"pri", fn:app.seedDemo}]);
   };
   app.$("#btnWipe").onclick = function(){
-    app.modal("Erase all data?","<p>Every invoice, handover, shipment, reception record, warehouse entry and setting will be cleared from this workspace. Download a backup first.</p>",
+    app.modal("Erase all data?","<p>Every booking, invoice, handover, shipment, reception record, warehouse entry and setting will be cleared from this workspace. Download a backup first.</p>",
       [{label:"Cancel"},{label:"Erase everything", cls:"dgr", fn:function(){
         if(!app.restoreWorkspace({entries:[], seq:{export:0,import:0}, sec:[], staff:null})) return false;
         app.toast("All data erased");

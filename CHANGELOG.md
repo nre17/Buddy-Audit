@@ -3,6 +3,18 @@
 All notable changes to the SolitAir charge advice and invoicing system.
 Newest first.
 
+## [2.1.0] — 2026-09-14 — Internal warehouse booking desk
+
+- Added export delivery and import collection appointments under existing master AWBs, with Dubai arrival windows, cargo/SHC, staff demand, coordination and optional flight/vehicle/dock details.
+- Added shared daily capacity warnings, searchable booking records, recorded arrivals, rescheduling, completion, cancellation and explicit no-shows.
+- Captured an optional company late policy per booking. Charges remain disabled initially; configured amounts become review proposals after actual arrival and never post to invoices or revenue. Waivers retain reasons and original assessments.
+- Added pure booking commands, shared client/server validation, attributed history, backup migration and disk recovery coverage.
+- Added bounded retries for temporary filesystem denials during atomic snapshot replacement, with preservation checks for persistent failures.
+- Pending recovery and disk retries remain visibly unsaved until the server acknowledges the write.
+- Documented dnata's public appointment model and unverified commercial terms. Added a separate ULD reconciliation exploration and proposed document-pack pilot; no email ingestion is implemented.
+
+This is an internal local prototype. Customers do not submit bookings through a public portal, and no ERP or authority-system integration is activated.
+
 ## [2.0.0] — 2026-09-14 — Cargo workspace revamp
 
 - Replaced the single HTML source with ES modules, separate styles/data, an esbuild bundle and a Windows build-and-open launcher.

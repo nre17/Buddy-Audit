@@ -1,6 +1,6 @@
 # System, workflow and record map
 
-**Integrated source:** `audit/full-repo-review` · **original baseline:** `f0f0fdb` · **map date:** 14 September 2026.
+**Integrated source:** `codex/booking-planner` (version 2.1) · **revamp base:** `audit/full-repo-review` · **original baseline:** `f0f0fdb` · **map date:** 14 September 2026.
 
 This map describes the delivered ESM application and its transitional boundaries. Use [the revamp index](README.md) for review order, running instructions and prioritized next work. The [architecture](architecture-audit.md), [domain](domain-audit.md), and [product](product-design.md) reviews provide the supporting baseline evidence.
 
@@ -19,6 +19,10 @@ flowchart TD
   Main --> Storage[core/workspace-storage.js]
   Storage --> Schema[core/snapshot.js / validation + migrations]
   Boot --> Features[src/features / forms, records, reporting]
+  Features --> BookingCommands[core/booking-commands.js]
+  BookingCommands --> BookingDomain[domain/bookings.mjs / pure rules]
+  Schema --> BookingDomain
+  Server --> BookingDomain
   Main --> Shell[ui/shell.js / routes, search, overview, trace]
   Features --> Runtime
   Shell --> Runtime
@@ -45,6 +49,7 @@ The diagram shows dependency/data flow, not separate deployed services. There is
 | Advice and commercial rules | `src/features/advice.js`, `src/domain/tariffs.js` | Shared direction-dependent forms, input validation, auto/optional charges, allocation, preview/save. Rules still depend on DOM fields and shared runtime values. |
 | Invoice/cash/reporting | `src/features/register.js`, `dashboard.js`, `handover.js` | Ledger filters/actions, cash projections, dashboard summaries and recorded shift reports. Several projections remain independently computed. |
 | Operational lists | `src/features/warehouse.js`, `security.js` | Invoice-derived/manual lying entries; reception log and invoice reconciliation. Scheduled clearing remains separate from proof of actual movement. |
+| Booking desk | `src/features/bookings.js`, `src/styles/bookings.css`, `src/core/booking-commands.js`, `src/domain/bookings.mjs` | Separate export/import agendas with shared capacity, immutable command results, Dubai-time validation, attributed histories and captured late policies. Client and server share the booking schema. |
 | Output and settings | `src/features/printing.js`, `exports.js`, `settings.js` | Advice/report documents, CSV/XLSX, tariffs/settings, whole-workspace backup/restore. |
 | Source assets/scenarios | `src/data/customers.js`, `branding.js`, `demo.js`, `fixtures/` | Customer fixture imported once as the canonical master, branding asset and synthetic scenario helpers. The generated customer list is not duplicated in workspace snapshots. |
 | Local runtime | `tools/server.mjs`, `tools/launch.mjs`, `Launch SolitAir.cmd` | Loopback HTTP/API, snapshot storage and ownership, build/start/reuse checks, browser launch. |
@@ -59,7 +64,7 @@ The active envelope is:
 format: solitair-workspace
 version: 1
 exportedAt: ISO timestamp
-db: ledger + settings + receptions + saved reports/equipment
+db: bookings and histories/policies + ledger + settings + receptions + saved reports/equipment
 shipments: latest loaded shipment records
 warehouse: active + cleared + removed identities
 ```
@@ -90,6 +95,9 @@ The server holds a per-data-directory process lock, identifies the application/w
 | Warehouse entry | `app.LL.items[]` / `cleared[]`; manual ID or `LLA` + invoice ID | Manual fields or export-invoice projection: AWB, direction/location text, pieces/weight, flight, scheduled departure and source metadata. Clearing follows the scheduled timestamp; it does not establish observed departure. |
 | Removal marker | `app.LL.removed[]` | Retains removed automatic entry identities to suppress immediate re-creation. Not a full operational or deletion audit log. |
 | Reception | `app.DB.sec[]`, stable `id` | AWB, direction, receiving section, timestamp and acknowledgement. Invoice matching is a reconciliation result; acknowledgement is a separate operator action. |
+| Booking | `app.DB.bookingPlanner.bookings[]`, stable `id` and visible `reference` | Existing normalized AWB, immutable direction, cargo/customer/route, Dubai appointment window, required staff, optional flight/vehicle/dock, coordination, actual arrival and lifecycle history. It records a visit, not AWB issuance or physical cargo acceptance. |
+| Booking policy and assessment | Planner default policy, each booking's captured `latePolicy` and `lateAssessment` | Fixed AED review proposal after recorded late arrival, disabled initially. Waivers retain the original assessment. No automatic financial posting or no-show charge. |
+| Planning capacity | `app.DB.bookingPlanner.capacity`; settings history | One local staffing/concurrent-visit setting. The shared day projection includes both directions and completed planned windows, excluding cancellations and no-shows. It does not calculate live occupancy or a shift roster. |
 | Shift report | `app.DB.reports[]`, `id`; current equipment in `app.DB.equipment` | Window/people, captured financial figures, manually entered operational counts, notes/held entries and equipment. Some reprint context remains live, so it is not yet a fully immutable issued document. |
 | Workspace configuration | `app.DB.company`, `bank`, `logo`, `staffList`, `staff`, `rates`, `freeHours`, `seq` | Mutable local settings and counters. A selected staff name is not an authenticated identity. Defaults plus saved overrides determine effective configuration. |
 
@@ -99,6 +107,11 @@ Solid arrows below mean a recorded containment/reference or deliberate operator 
 
 ```mermaid
 flowchart LR
+  CustomerService[Customer service request entry] --> Booking[Booking by existing AWB and direction]
+  Booking --> Visit[Recorded arrival / completed visit / cancelled / no-show]
+  Booking --> CapturedPolicy[Captured late policy and history]
+  Visit -.->|actual arrival and captured policy only| Proposal[Late-charge review proposal]
+  Booking -.->|normalized AWB + direction association| Shipment
   Source[Manifest input: operator supplied] -->|parsed latest fields + limited provenance| Shipment[SH shipment row]
   Master[Generated customer master] -.->|name lookup| Owner[AWB owner]
   Master -.->|operator selects billing party| Payer[Billing-party snapshot]
@@ -121,7 +134,7 @@ flowchart LR
   Warehouse -.->|current warehouse section at reprint| Shift
 ```
 
-The shell exposes this association as **The AWB trail**: manifest details, matching invoices, warehouse entries, and reception counts. Its invoice/reception detail links use normalized AWB and known direction. Warehouse matching is currently by AWB. Unknown source labels remain unclassified; only explicitly marked synthetic rows receive a synthetic label. The overview reports current saved collections with an all-dates basis; it does not invent a live feed, acceptance percentage, verified physical-stock total or ULD count.
+The shell exposes this association as **The AWB trail**: booking visits, manifest details, matching invoices, warehouse entries, and reception counts. Its booking/invoice/reception detail links use normalized AWB and known direction. Warehouse matching is currently by AWB. Unknown source labels remain unclassified; only explicitly marked synthetic rows receive a synthetic label. The overview's shipment and finance metrics describe current saved collections across all dates; its booking strip explicitly shows today's Dubai plan. These are not a live feed, acceptance percentage, verified physical-stock total or ULD count.
 
 ## Baseline-to-current coverage map
 

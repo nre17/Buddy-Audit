@@ -1,10 +1,11 @@
 import { build } from 'esbuild';
-import { mkdir, copyFile, writeFile } from 'node:fs/promises';
+import { mkdir, copyFile, writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const { version } = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 await mkdir(path.join(root, 'dist/assets'), {recursive: true});
 await build({absWorkingDir: root, entryPoints: ['src/main.js'], bundle: true, outdir: 'dist/assets', entryNames: 'app', format: 'esm', target: ['es2022'], sourcemap: true, minify: false, logLevel: 'warning'});
 await copyFile(path.join(root, 'src/index.html'), path.join(root, 'dist/index.html'));
-await writeFile(path.join(root, 'dist/build.json'), JSON.stringify({application: 'solitair-local-workspace', version: '2.0.0', builtAt: new Date().toISOString()}, null, 2));
+await writeFile(path.join(root, 'dist/build.json'), JSON.stringify({application: 'solitair-local-workspace', version, builtAt: new Date().toISOString()}, null, 2));
 console.log('SolitAir built successfully → dist/');

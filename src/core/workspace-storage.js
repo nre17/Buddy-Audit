@@ -77,7 +77,7 @@ export async function prepareStorage() {
     throw new Error('This browser has saved data but the disk workspace is empty. Export a recovery copy before choosing which workspace to restore.');
   }
   ready = true;
-  if (!blocked) status('saved', `Disk workspace connected · revision ${revision}`);
+  if (!blocked) status(pending ? 'saving' : 'saved', pending ? 'Recovered browser changes · saving disk snapshot…' : `Disk workspace connected · revision ${revision}`);
 }
 
 function rollbackMemory() {
@@ -113,6 +113,7 @@ function persist() {
 async function flush() {
   if (running || !pending || blocked || browserOnly) return;
   running = true; const version = generation;
+  status('saving', 'Saving disk snapshot…');
   try {
     const snapshot = makeSnapshot(app.DB, app.SH, app.LL);
     const response = await fetch('/api/snapshot', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({expectedRevision: revision, snapshot}), signal: AbortSignal.timeout(10000)});

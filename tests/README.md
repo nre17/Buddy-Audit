@@ -1,12 +1,12 @@
 # Tests
 
-A Playwright regression suite that drives the built HTTP application in isolated browser contexts, plus Node tests for the disk server. Browser-only sandbox storage is separate from the working disk cache; disk tests use temporary directories.
+A Playwright regression suite that drives the built HTTP application in isolated browser contexts, plus Node tests for booking rules and the disk server. Browser-only sandbox storage is separate from the working disk cache; disk tests use temporary directories.
 
 Run meaningful targeted checks during development and the full verification before delivery. Build first when invoking the browser runner directly.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm test            # build + server tests + all browser specs
+pnpm test            # build + domain/server tests + all browser specs
 node tests/run-all.js 03-charges     # one spec by filename substring
 ```
 
@@ -30,6 +30,8 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 | `14-domain-integrity.spec.js` | Input validation, write failure rollback, staged import validation, retained older manifests and same-AWB source refresh |
 | `15-workspace-storage.spec.js` | Full restore, migrations, malformed data, disk failure, conflict rollback, identity binding, sandbox isolation, lost acknowledgements and unchanged reloads |
 | `16-security-boundaries.spec.js` | Direction-aware matching, selection, restore validation, failed security saves, escaped output and CSV protection |
+| `17-bookings.spec.js` | Internal booking creation, explicit samples, shared capacity, rescheduling/cancellation, arrival/late-policy snapshot/waiver, no-show, failed-save drafts, mobile form reopening and persistence |
+| `bookings.test.js` | Pure commands, Dubai time, cargo/date validation, immutable direction, overlapping AWBs, lifecycle, no-show, frozen policy and shared workload calculations |
 | `server.test.js` | Atomic persistence/restart, failed writes, concurrent revision checks, backup retention, origin/host/body guards and static-serving isolation |
 
 Many cases record previously reported bugs or defects found during this audit.

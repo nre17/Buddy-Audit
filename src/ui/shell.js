@@ -1,8 +1,11 @@
 import { app } from '../core/runtime.js';
+import { planDay, dubaiDate } from '../domain/bookings.mjs';
 
 const PAGES = {
   overview: ['Overview', 'Your cargo operation, connected.', 'overview'],
   shipments: ['Shipment Database', 'Bring the manifest into one searchable workspace.', 'box'],
+  'bookings-export': ['Export Bookings', 'Plan deliveries to DWC, arrival slots and the people needed.', 'clock'],
+  'bookings-import': ['Import Bookings', 'Schedule collections from DWC and coordinate each visit.', 'clock'],
   export: ['Export Advice', 'From air waybill to a complete charge advice.', 'out'],
   import: ['Import Advice', 'Review incoming cargo, charges and delivery details.', 'in'],
   lying: ['Warehouse / Lying List', 'Cargo on the warehouse list and its scheduled departures.', 'warehouse'],
@@ -13,7 +16,7 @@ const PAGES = {
   customers: ['Customer Database', 'Find the AWB owner and the right billing party.', 'people'],
   admin: ['Rates & Data', 'Manage tariffs, workspace details and local backups.', 'settings'],
 };
-const GROUPS = [['WORKSPACE', ['overview', 'shipments']], ['CARGO OPERATIONS', ['export', 'import', 'lying', 'security']], ['FINANCE & REPORTING', ['register', 'handover', 'dash']], ['MANAGE', ['customers', 'admin']]];
+const GROUPS = [['WORKSPACE', ['overview', 'shipments']], ['BOOKING DESK', ['bookings-export', 'bookings-import']], ['CARGO OPERATIONS', ['export', 'import', 'lying', 'security']], ['FINANCE & REPORTING', ['register', 'handover', 'dash']], ['MANAGE', ['customers', 'admin']]];
 const ICONS = {
   overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   box: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v9l9 5 9-5V8M12 13v9M7.5 5.5l9 5"/>',
@@ -45,6 +48,7 @@ const count = value => new Intl.NumberFormat('en-GB').format(number(value));
 const key = value => String(value || '').replace(/\D/g, '');
 const direction = shipment => app.shDirection ? app.shDirection(shipment) : shipment.dep ? 'Export' : shipment.rcf ? 'Import' : '';
 const invoices = () => (app.DB?.entries || []).filter(row => row.type === 'invoice');
+const bookings = () => app.bookingPlanner().bookings;
 const shipments = () => app.SH?.items || [];
 const matchAwb = (left, right) => !!key(left) && key(left) === key(right);
 const synthetic = row => row?.source === 'synthetic-demo' || row?.synthetic === true || app.SH?.demo === true;
@@ -69,6 +73,7 @@ function renderOverview() {
   const warningRows = missing.slice(0, 3).map(row => ({ title: row.awb, detail: `${row.dir || 'Cargo'} received · no direction-matched invoice`, action: 'security', tone: 'amber', label: 'Review reception' }));
   incomplete.slice(0, Math.max(0, 3 - warningRows.length)).forEach(row => warningRows.push({ title: row.awb, detail: 'Manifest has missing weight, owner or schedule', awb: row.awb, tone: 'amber', label: 'Review shipment' }));
   const today = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Dubai' }).format(new Date());
+  const bookingDay = planDay(app.bookingPlanner(), dubaiDate(new Date().toISOString()), new Date().toISOString());
   el('p-overview').innerHTML = `
     <section class="ws-overview-intro" aria-label="Workspace overview">
       <div><div class="ws-eyebrow">THE OPERATIONS DESK <span>/</span> ${escape(today.toUpperCase())}</div><h1>Every shipment.<br><span>A clearer picture.</span></h1><p>From manifest to invoice and shift handover.<br>Your cargo workflow, in one place.</p><div class="ws-intro-actions">${navAction('export', 'New export advice', 'ws-button ws-primary')}${navAction('shipments', 'Import a manifest', 'ws-button ws-secondary')}</div></div>
@@ -83,7 +88,8 @@ function renderOverview() {
     </section>
     <div class="ws-overview-columns"><section class="ws-card ws-shipments-card"><header class="ws-card-heading"><div><div class="ws-eyebrow">SHIPMENT WORKSPACE</div><h2>Recently imported</h2></div>${navAction('shipments', 'View all')}</header><div class="ws-table-scroll"><table class="ws-table"><thead><tr><th>Air waybill / owner</th><th>Route</th><th>Direction</th><th class="ws-number">Gross weight</th><th><span class="ws-sr-only">Open shipment</span></th></tr></thead><tbody>${recent.length ? recent.map(row => `<tr><td><button type="button" class="ws-awb" data-ws-awb="${escape(row.awb)}">${escape(row.awb)}</button><span class="ws-cell-sub" title="${escape(row.cust)}">${escape(row.cust || 'Owner not recorded')}</span></td><td><span class="ws-route">${escape(row.org || '—')} ${icon('arrow')} ${escape(row.dst || '—')}</span><span class="ws-cell-sub">${escape(row.fltno || 'Flight not recorded')}</span></td><td><span class="ws-status ${direction(row) === 'Import' ? 'ws-blue' : 'ws-green'}">${escape(direction(row) || 'Unspecified')}</span></td><td class="ws-number">${row.wt == null ? '—' : count(row.wt)} <small>kg</small></td><td><button type="button" class="ws-icon-button" data-ws-awb="${escape(row.awb)}" aria-label="Open shipment ${escape(row.awb)}">${icon('arrow')}</button></td></tr>`).join('') : `<tr><td colspan="5"><div class="ws-empty">${icon('box')}<strong>Your shipment workspace starts here</strong><p>Paste or upload a manifest to connect an AWB to its cargo details.</p>${navAction('shipments', 'Open manifest intake')}</div></td></tr>`}</tbody></table></div><footer class="ws-card-footer">${current.some(synthetic) ? '<span class="ws-demo-dot"></span> Includes synthetic sample shipments' : current.some(row => !row.source || row.source === 'legacy-unclassified') ? 'Includes records with unclassified source' : 'Imported manifest records'}<span>Ordered by import time</span></footer></section>
     <section class="ws-card ws-attention"><header class="ws-card-heading"><div><div class="ws-eyebrow">NEXT ACTIONS</div><h2>Needs a look</h2></div><span class="ws-count">${count(missing.length + incomplete.length)}</span></header><div class="ws-attention-body">${warningRows.length ? warningRows.map(row => `<button type="button" class="ws-attention-row" ${row.awb ? `data-ws-awb="${escape(row.awb)}"` : `data-ws-nav="${row.action}"`}><span class="ws-attention-icon">${icon('alert')}</span><span><strong>${escape(row.title)}</strong><span>${escape(row.detail)}</span><em>${escape(row.label)} ${icon('arrow')}</em></span></button>`).join('') : `<div class="ws-no-issues"><span>${icon('check')}</span><h3>No exceptions in these checks</h3><p>No unmatched active security receptions or incomplete manifests were found.</p><small>These checks do not establish cargo acceptance or physical release.</small></div>`}</div><footer class="ws-card-footer">${navAction('security', 'Open security reconciliation')}</footer></section></div>
-    <section class="ws-workflow-strip"><div><span class="ws-workflow-icon">${icon('link')}</span><div><h3>Follow the air waybill</h3><p>One lookup connects shipment details, invoices and warehouse records.</p></div></div><button type="button" class="ws-button ws-secondary" data-ws-search>Find a shipment ${icon('search')}</button></section>
+    <section class="ws-workflow-strip"><div><span class="ws-workflow-icon">${icon('clock')}</span><div><h3>Today at the booking desk</h3><p>${bookingDay.counts.total - bookingDay.counts.cancelled - bookingDay.counts.noShow} visits planned · ${bookingDay.counts.overdue} overdue · ${bookingDay.peak.staffRequired} staff at planned peak. All times Dubai.</p></div></div>${navAction('bookings-export', 'Plan deliveries & collections', 'ws-button ws-secondary')}</section>
+    <section class="ws-workflow-strip"><div><span class="ws-workflow-icon">${icon('link')}</span><div><h3>Follow the air waybill</h3><p>One lookup connects bookings, shipment details, invoices and warehouse records.</p></div></div><button type="button" class="ws-button ws-secondary" data-ws-search>Find a shipment ${icon('search')}</button></section>
   `;
 }
 
@@ -108,6 +114,7 @@ function updatePage(page, push = true) {
   document.body.dataset.workspacePage = page;
   document.title = `${PAGES[page][0]} · SolitAir Cargo`;
   if (page === 'overview') renderOverview();
+  if (page.startsWith('bookings-')) app.renderBookings(page === 'bookings-import' ? 'Import' : 'Export');
   document.body.classList.remove('ws-nav-open');
   el('ws-menu')?.setAttribute('aria-expanded', 'false');
   if (push && location.hash !== `#${page}`) location.hash = page;
@@ -120,6 +127,7 @@ function navigate(page, push = true) {
   updatePage(page, push);
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
+app.navigateWorkspace = navigate;
 
 function routeFromHash() {
   const [path, query = ''] = location.hash.replace(/^#/, '').split('?');
@@ -159,6 +167,7 @@ function openShipment(awb) {
   const related = invoices().filter(row => matchAwb(row.mawb, awb) && (!shipment || !direction(shipment) || row.mode === direction(shipment)));
   const reception = (app.DB?.sec || []).filter(row => matchAwb(row.awb, awb) && (!shipment || !direction(shipment) || row.dir === direction(shipment)));
   const lying = (app.LL?.items || []).filter(row => matchAwb(row.awb, awb));
+  const visits = bookings().filter(row => matchAwb(row.awb, awb) && (!shipment || !direction(shipment) || row.direction === direction(shipment)));
   const source = shipment || related[0];
   if (!source) {
     openDialog(awb, `<div class="ws-empty">${icon('box')}<strong>No shipment or invoice record found</strong><p>Review the manifest or enter an advice manually.</p>${navAction('shipments', 'Open Shipment Database', 'ws-button ws-primary')}</div>`);
@@ -173,6 +182,7 @@ function openShipment(awb) {
     <dl class="ws-detail-facts">${detail('AWB owner', source.cust || 'Not recorded')}${detail('Gross weight', source.wt == null ? 'Not recorded' : `${count(source.wt)} kg`)}${detail('Pieces', source.pcs == null ? 'Not recorded' : count(source.pcs))}${detail('Handling code', source.shc || 'Not recorded')}${detail(mode === 'Import' ? 'RCF time' : 'Scheduled departure', dateText(shipment ? mode === 'Import' ? source.rcf : source.dep : mode === 'Import' ? source.t1 : source.t2))}${detail('Nature of goods', source.nog || 'Not recorded')}</dl>
     <div class="ws-detail-section"><div class="ws-eyebrow">CONNECTED RECORDS</div><h3>The AWB trail</h3><p>Linked by normalized AWB${mode ? ` and ${escape(mode.toLowerCase())} direction for invoices and reception` : ''}. These records do not prove physical acceptance or release.</p><div class="ws-trace"><div class="ws-trace-node">${icon('box')}<strong>${shipment ? '1' : '0'}</strong><span>Manifest record</span></div><span class="ws-trace-edge">${icon('arrow')}</span><button class="ws-trace-node" type="button" data-ws-register="${escape(canonicalAwb)}">${icon('receipt')}<strong>${related.length}</strong><span>Invoices</span></button><span class="ws-trace-edge">${icon('arrow')}</span><button class="ws-trace-node" type="button" data-ws-nav="lying">${icon('warehouse')}<strong>${lying.length}</strong><span>Warehouse rows</span></button></div><div class="ws-related-note">${icon('shield')} ${reception.length} security reception${reception.length === 1 ? '' : 's'} · ${reception.filter(row => row.ack).length} acknowledged ${navAction('security', 'Review')}</div></div>
     ${related.length ? `<section class="ws-detail-section"><h3>Saved charge advices</h3>${related.map(row => `<button type="button" class="ws-invoice-result" data-ws-invoice="${escape(row.id)}"><span><strong>${escape(row.ref)}</strong><small>${escape(row.billTo || row.cust)} · ${escape(row.payMode || 'Payment mode not recorded')}</small></span><strong>AED ${money(row.total)}</strong>${icon('arrow')}</button>`).join('')}</section>` : '<p class="ws-detail-note">No direction-matched charge advice has been saved for this AWB.</p>'}
+    ${visits.length ? `<section class="ws-detail-section"><h3>Warehouse bookings</h3>${visits.map(row => `<button type="button" class="ws-invoice-result" data-ws-booking="${escape(row.id)}"><span><strong>${escape(row.reference)}</strong><small>${escape(row.slotStart.replace('T', ' '))} Dubai · ${escape(row.direction)}</small></span><strong>${escape(row.status)}</strong>${icon('arrow')}</button>`).join('')}</section>` : ''}
     <div class="ws-detail-actions">${mode ? `<button type="button" class="ws-button ws-primary" data-ws-advice="${escape(canonicalAwb)}" data-mode="${escape(mode)}">New ${escape(mode.toLowerCase())} advice ${icon('plus')}</button>` : ''}<button type="button" class="ws-button ws-secondary" data-ws-nav="shipments">Open manifest ${icon('arrow')}</button></div>
   `, 'ws-drawer');
 }
@@ -184,7 +194,7 @@ function openInvoice(id) {
 }
 
 function openSearch() {
-  openDialog('Find anything in your workspace', `<label class="ws-sr-only" for="ws-search-input">Search AWB, customer or invoice reference</label><div class="ws-search-field">${icon('search')}<input id="ws-search-input" type="search" autocomplete="off" placeholder="Air waybill, customer or invoice reference…" aria-controls="ws-search-results"></div><p class="ws-search-hint">Search manifests, saved invoices and the demo customer master.</p><div id="ws-search-results" aria-live="polite"></div>`, 'ws-search-dialog');
+  openDialog('Find anything in your workspace', `<label class="ws-sr-only" for="ws-search-input">Search AWB, customer or reference</label><div class="ws-search-field">${icon('search')}<input id="ws-search-input" type="search" autocomplete="off" placeholder="Air waybill, customer or reference…" aria-controls="ws-search-results"></div><p class="ws-search-hint">Search bookings, manifests, saved invoices and the demo customer master.</p><div id="ws-search-results" aria-live="polite"></div>`, 'ws-search-dialog');
   el('ws-search-input').addEventListener('input', renderSearch);
   el('ws-search-input').addEventListener('keydown', event => {
     if (event.key === 'ArrowDown') { event.preventDefault(); el('ws-search-results').querySelector('button')?.focus(); }
@@ -200,11 +210,12 @@ function renderSearch() {
   const matches = values => values.some(value => String(value || '').toLowerCase().includes(term));
   searchResults = [];
   if (term.length >= 2) {
+    bookings().filter(row => matches([row.awb, row.reference, row.customer, row.flightNumber]) || numericTerm.length >= 3 && key(row.awb).includes(numericTerm)).slice(0, 7).forEach(row => searchResults.push({ type: 'Booking', title: row.reference, sub: `${row.awb} · ${row.direction} · ${row.slotStart.replace('T', ' ')} Dubai`, booking: row.id, icon: 'clock' }));
     shipments().filter(row => matches([row.awb, row.cust, row.fltno, row.org, row.dst]) || numericTerm.length >= 3 && key(row.awb).includes(numericTerm)).slice(0, 7).forEach(row => searchResults.push({ type: 'Shipment', title: row.awb, sub: [row.org, row.dst].join(' → ') + ' · ' + (row.cust || 'Owner not recorded'), awb: row.awb, icon: 'box' }));
     invoices().filter(row => matches([row.mawb, row.ref, row.cust, row.billTo]) || numericTerm.length >= 3 && key(row.mawb).includes(numericTerm)).slice(0, 5).forEach(row => searchResults.push({ type: 'Invoice', title: row.ref, sub: row.mawb + ' · AED ' + money(row.total), invoice: row.id, icon: 'receipt' }));
     (app.CUSTOMERS || []).filter(row => matches([row.name, row.no, row.trn])).slice(0, 5).forEach(row => searchResults.push({ type: 'Customer', title: row.name, sub: `Customer ${row.no} · demo master`, customer: row.name, icon: 'people' }));
   }
-  el('ws-search-results').innerHTML = searchResults.length ? searchResults.map(result => `<button type="button" class="ws-search-result" ${result.awb ? `data-ws-awb="${escape(result.awb)}"` : result.invoice ? `data-ws-invoice="${escape(result.invoice)}"` : `data-ws-customer="${escape(result.customer)}"`}>${icon(result.icon)}<span><small>${result.type}</small><strong>${escape(result.title)}</strong><span>${escape(result.sub)}</span></span>${icon('arrow')}</button>`).join('') : `<div class="ws-empty">${icon('search')}<strong>${term.length < 2 ? 'Start with an AWB, name or reference' : 'No matching records'}</strong><p>${term.length < 2 ? 'Enter at least two characters. Use the arrow key to reach results.' : 'Try a shorter search, or load the shipment manifest.'}</p></div>`;
+  el('ws-search-results').innerHTML = searchResults.length ? searchResults.map(result => `<button type="button" class="ws-search-result" ${result.booking ? `data-ws-booking="${escape(result.booking)}"` : result.awb ? `data-ws-awb="${escape(result.awb)}"` : result.invoice ? `data-ws-invoice="${escape(result.invoice)}"` : `data-ws-customer="${escape(result.customer)}"`}>${icon(result.icon)}<span><small>${result.type}</small><strong>${escape(result.title)}</strong><span>${escape(result.sub)}</span></span>${icon('arrow')}</button>`).join('') : `<div class="ws-empty">${icon('search')}<strong>${term.length < 2 ? 'Start with an AWB, name or reference' : 'No matching records'}</strong><p>${term.length < 2 ? 'Enter at least two characters. Use the arrow key to reach results.' : 'Try a shorter search, or load the shipment manifest.'}</p></div>`;
 }
 
 function filterRegister(awb) {
@@ -284,6 +295,7 @@ export function mountWorkspace() {
     else if (target.dataset.wsRoute) { event.preventDefault(); navigate(target.dataset.wsRoute); }
     else if (target.dataset.wsNav) { if (dialog.open) closeDialog(); navigate(target.dataset.wsNav); }
     else if (target.dataset.wsAwb) openShipment(target.dataset.wsAwb);
+    else if (target.dataset.wsBooking) { if (dialog.open) closeDialog(); app.openBooking(target.dataset.wsBooking); }
     else if (target.dataset.wsInvoice) openInvoice(target.dataset.wsInvoice);
     else if (target.dataset.wsAdvice) startAdvice(target.dataset.wsAdvice, target.dataset.mode);
     else if (target.dataset.wsRegister) filterRegister(target.dataset.wsRegister);
