@@ -25,14 +25,16 @@ const addressOf = (c) => [c.addr, c.city, c.state].filter(Boolean).join(", ");
 module.exports = {
   name: "AWB-first entry & billing party",
   tests: {
-    "the Shipment Database tab comes first and both advices start with the AWB": async (h) => {
+    "the workspace opens on Overview and both advices start with the AWB": async (h) => {
       const app = await h.openApp();
       try {
         h.eq(await app.page.$eval(".tabs button", (b) => b.textContent.trim()), "Shipment Database", "first tab");
-        h.eq(await app.page.$eval(".page.on", (p) => p.id), "p-export", "the counter still opens on the Export Advice");
+        h.eq(await app.page.$eval(".page.on", (p) => p.id), "p-overview", "the workspace opens on its operational overview");
+        await h.tab(app.page, "Export Advice");
         h.eq(await app.page.$eval("#p-export .panel .body input", (e) => e.id), "a_mawb", "export form starts with the AWB");
-        h.eq(await app.page.$eval("#p-import .panel .body input", (e) => e.id), "i_mawb", "import form starts with the AWB");
         h.contains(await text(app.page, "#a_awbstatus"), "Shipment Database is empty", "an empty database is explained");
+        await h.tab(app.page, "Import Advice");
+        h.eq(await app.page.$eval("#p-import .panel .body input", (e) => e.id), "i_mawb", "import form starts with the AWB");
         app.assertNoErrors();
       } finally { await app.close(); }
     },
@@ -40,6 +42,7 @@ module.exports = {
     "TRN and address appear once, in the billing party section at the bottom": async (h) => {
       const app = await h.openApp();
       try {
+        await h.tab(app.page, "Export Advice");
         const r = await app.page.evaluate(() => {
           const labels = [...document.querySelectorAll("#p-export label")].map((l) => l.textContent.toUpperCase());
           const top = (id) => document.getElementById(id).getBoundingClientRect().top;
@@ -288,6 +291,9 @@ module.exports = {
         await app.page.waitForTimeout(200);
         h.assert(!(await marked("a_mawb")), "a correct AWB lifts the block");
         await app.page.fill("#a_wt", "100");
+        // This manifest has a fixed departure; its acceptance must precede it
+        // regardless of the calendar date on which the regression suite runs.
+        await app.page.fill("#a_t1", "2026-09-09T20:15");
         h.contains(await h.saveAdvice(app.page, "export"), "Invoice saved", "and the advice saves");
       } finally { await app.close(); }
     },
@@ -645,7 +651,7 @@ module.exports = {
         await app.page.click("#sh_clear");
         await app.page.waitForTimeout(200);
         h.eq(await app.page.evaluate(() => SH.items.length), 0, "cleared");
-        h.eq(await app.page.evaluate(() => JSON.parse(localStorage.getItem("solitair_shipments_v1")).items.length), 0, "cleared in storage");
+        h.eq(await app.page.evaluate(() => JSON.parse(localStorage.getItem(SolitAir.storageKey)).snapshot.shipments.items.length), 0, "cleared in storage");
       } finally { await app.close(); }
     },
 

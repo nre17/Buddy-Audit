@@ -22,18 +22,19 @@ const GREEN = "\x1b[32m", RED = "\x1b[31m", DIM = "\x1b[2m", YEL = "\x1b[33m", R
     process.exit(1);
   }
 
-  const files = fs.readdirSync(SPEC_DIR).filter((f) => f.endsWith(".spec.js")).sort();
+  const files = fs.readdirSync(SPEC_DIR).filter((f) => f.endsWith(".spec.js") && (!only || f.includes(only))).sort();
+  if (files.length === 0) throw new Error("No test specs matched" + (only ? ": " + only : " discovery"));
   let pass = 0, fail = 0;
   const failures = [];
   const started = Date.now();
 
   for (const file of files) {
-    if (only && file.indexOf(only) < 0) continue;
     const spec = require(path.join(SPEC_DIR, file));
     console.log("\n" + spec.name + DIM + "  (" + file + ")" + RST);
 
     for (const caseName of Object.keys(spec.tests)) {
       const t0 = Date.now();
+      console.log("  " + DIM + "RUN   " + caseName + RST);
       try {
         await spec.tests[caseName](harness);
         pass++;

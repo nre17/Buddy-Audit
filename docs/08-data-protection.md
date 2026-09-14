@@ -1,5 +1,7 @@
 # 08 — Data Protection & Demo Data Policy
 
+> Historical prototype reference (baseline `f0f0fdb`). The owner authorized a full revamp. Single-file, deployment, storage and governance instructions here are superseded; use the [current review](revamp/README.md) and [root README](../README.md). Treat business rules as baseline evidence and verify current behavior in source/tests.
+
 **Status:** in force
 **Applies to:** everything in this repository, every branch, every commit
 **Owner:** repository owner

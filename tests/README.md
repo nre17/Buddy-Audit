@@ -1,14 +1,12 @@
 # Tests
 
-A Playwright regression suite that drives a real headless Chromium against the
-actual application file and asserts on behaviour, not on source text.
+A Playwright regression suite that drives the built HTTP application in isolated browser contexts, plus Node tests for the disk server. Browser-only sandbox storage is separate from the working disk cache; disk tests use temporary directories.
 
-This is the only safety net this project has. There is no type system and no
-framework. **Run it before and after every change.**
+Run meaningful targeted checks during development and the full verification before delivery. Build first when invoking the browser runner directly.
 
 ```bash
-npm install          # one-time
-npm test             # everything, ~120s, exits non-zero on failure
+pnpm install --frozen-lockfile
+pnpm test            # build + server tests + all browser specs
 node tests/run-all.js 03-charges     # one spec by filename substring
 ```
 
@@ -28,9 +26,14 @@ node tests/run-all.js 03-charges     # one spec by filename substring
 | `10-awb-first.spec.js` | Shipment Database paste and CSV import, column matching, date-order detection and override, AWB suggestions (prefix and tail matching, click, keyboard, closing), gross weight headings and weightless sheets, the AWB lookup and its guards (prefix, changed AWB, wrong direction blocked from saving), sample shipments on a browser's first open, manifest SHC codes that are unknown or combined, billing party autofill and validation, the saved record, the printed advice's content, company colours and bank details for payment (shipped, site-entered and earlier-format details), and the live animals charge name, mandatory dates and times |
 | `11-customer-database.spec.js` | The Customer Database tab: position, the capped list and search; every customer has a TRN and an address; both pickers list exactly the database, never names held in the browser's saved data |
 | `12-uae-dates.spec.js` | Day-first dates: typing and showing dd/mm/yyyy, unreadable dates, every date field and dialog, the printout, register and exports, the calendar picker |
+| `13-workspace.spec.js` | Navigation/history, search-to-advice, accessible dismissal, mobile containment |
+| `14-domain-integrity.spec.js` | Input validation, write failure rollback, staged import validation, retained older manifests and same-AWB source refresh |
+| `15-workspace-storage.spec.js` | Full restore, migrations, malformed data, disk failure, conflict rollback, identity binding, sandbox isolation, lost acknowledgements and unchanged reloads |
+| `16-security-boundaries.spec.js` | Direction-aware matching, selection, restore validation, failed security saves, escaped output and CSV protection |
+| `server.test.js` | Atomic persistence/restart, failed writes, concurrent revision checks, backup retention, origin/host/body guards and static-serving isolation |
 
-Many cases are labelled as regressions. Each one corresponds to a bug that reached
-production. Do not delete them.
+Many cases record previously reported bugs or defects found during this audit.
+Preserve that behavioral coverage when changing the implementation.
 
 ## Writing a spec
 
@@ -70,5 +73,15 @@ and assertions `assert`, `eq`, `eqMoney`, `contains`, `notContains`.
 
 ## CI
 
-`.github/workflows/ci.yml` runs the suite on every push and pull request. A red
-suite blocks the merge.
+`.github/workflows/ci.yml` runs verification on pull requests and pushes to
+`main`, `audit/**` and `codex/**`. Whether a failed check blocks merging depends
+on the repository's branch protection settings.
+
+The harness owns each test browser through Playwright's `launchServer`. It closes
+contexts and the connection, then allows five seconds for shutdown. If Windows
+Chrome stalls, it terminates only that fixture's child process and reports the
+fallback. If Playwright's cleanup notification also stalls, the contexts and
+connection must already be closed, the owned PID must no longer exist, and its
+server endpoint must refuse connections. This verifies process/socket isolation,
+not temporary-profile deletion. Unconfirmed isolation fails the case. A filter
+that matches no spec also fails rather than reporting zero tests as a pass.

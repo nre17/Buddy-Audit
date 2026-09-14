@@ -1,178 +1,83 @@
-# SolitAir Cargo — Charge Advice & Invoicing System
+# SolitAir Cargo Workspace
 
-Offline, single-file invoicing and cargo counter management system for
-SolitAir Cargo Express Services DWC-LLC, Dubai World Central (DWC/OMDW).
+A local application for shipment intake, charge advice, invoicing, warehouse tracking, security reconciliation and shift handover. This fork replaces the single HTML prototype with organized JavaScript modules, a navigable operations interface and a local disk-backed workspace.
 
-**Status:** prototype, for demonstration and the ERP handover. It runs on demo
-customer data; the real customer master belongs in the ERP.
-**Repository visibility:** PRIVATE, permanently. See [Data protection](#data-protection).
-**Data:** demo only. See [Data protection](#data-protection).
+**Start with [the revamp review](docs/revamp/README.md)** for the full audit, system map, delivered changes and next work.
 
----
+## Open it on Windows
 
-## What it does
+Double-click **Launch SolitAir.cmd**. The launcher finds Node, installs locked dependencies on first use when a supported package manager is available, builds the app, starts or reuses its local server, then opens [the workspace](http://127.0.0.1:4380). It also supports the Node runtime bundled with Codex on this machine.
 
-Ten workspaces in one page, all driven off a single invoice register:
+First-time setup on another machine: install Node.js 22.13 or newer, then:
 
-| Tab | Purpose |
-|---|---|
-| **Shipment Database** | Paste the day's manifest from Excel. The advice tabs look each AWB up here |
-| **Customer Database** | The demo customer master the advices use for the AWB owner, the billing party and its TRN and address |
-| **Export Advice** | Raise an export charge advice (form CGS-GND-F037): type the AWB and the shipment fills in, choose the billing party, auto-priced from the tariff |
-| **Import Advice** | Raise an import delivery order advice (form CGS-GND-F038), the same way |
-| **Lying List** | Cargo physically in the warehouse awaiting departure, with countdowns |
-| **Invoice Register** | The ledger. Every saved invoice, cash position, handovers to accounts |
-| **Shift Handover** | Shift-change report, auto-calculated from the register |
-| **Dashboard** | Revenue, cash, payment mix, top customers, outstanding credit/CASS |
-| **Rates & Data** | Tariff overrides, free-storage hours, staff list, logo, backup/restore |
-| **Facility Security** | AWBs received at the facility, flagged invoiced vs not invoiced |
-
-The register is the single source of truth. The lying list, dashboard, handover
-figures and security invoiced-status are all derived from it.
-
----
-
-## Running it
-
-There is nothing to install or build.
-
-```bash
-open app/solitair-invoicing.html          # macOS
-# or just double-click the file
+```powershell
+npm install --global pnpm@11.19.0
+pnpm install --frozen-lockfile
+pnpm start
 ```
 
-It runs entirely in the browser from `file://`, with no network access required.
-Data is saved to that browser's `localStorage` on that machine only.
+The launcher reports an occupied or incompatible port without stopping another service. Set `SOLITAIR_PORT` to choose another port and `SOLITAIR_DATA_DIR` to choose another local storage directory. Keep the same port and directory for the same workspace.
 
-**On a new machine, configure it first.** A fresh copy prints `Not configured`
-where the company TRN belongs, and invented sample bank details — the real ones are
-site configuration, not part of the file. Enter them under **Rates & Data → Company & Bank Details**,
-then set the counter staff names under **Rates & Data → Counter Staff**. See
-[`docs/06-operations-runbook.md`](docs/06-operations-runbook.md).
+## Workspaces
 
-Tested on Chrome and Safari on macOS. Desktop layout only — there are no mobile
-breakpoints (see audit finding A-12).
+| Workspace | Purpose |
+| --- | --- |
+| Overview | Record-based metrics, exceptions, recent shipments and quick actions |
+| Shipment Database | Preview and validate pasted CSV/TSV manifests; inspect row issues |
+| Export / Import Advice | AWB lookup, billing party, calculated charges, payment allocation and printing |
+| Warehouse / Lying List | Recorded cargo and scheduled departures |
+| Facility Security | Reception records matched to invoices by AWB and direction |
+| Invoice Register | Saved invoices, cash movements, filters and CSV/XLSX exports |
+| Shift Handover / Dashboard | Recorded activity, cash position, reports and analysis |
+| Customers / Rates & Data | Demo customer master, tariffs, site details and backup/restore |
 
----
+Search an AWB, customer or invoice with **Ctrl+K**. A shipment drawer connects its manifest, invoices, warehouse records and security receptions.
 
-## Repository layout
+## Saving and recovery
 
-```
-app/solitair-invoicing.html   The entire application. Single source of truth.
-docs/                         Architecture, data model, business rules, audit,
-                              runbook, ERP spec, data protection, governance
-tests/                        Playwright regression suite (real assertions, CI-ready)
-fixtures/                     Demo data. Never a counter-machine backup.
-tools/                        Demo-data generator and the repository guard
-CLAUDE.md                     Instructions for Claude Code. Read first.
-```
+- A save first writes one complete browser recovery cache. The status banner confirms when it reaches disk; keep the window open if disk saving fails.
+- Normal storage is `.data/snapshot.json`, with up to 20 previous revisions in `.data/backups/`. The server writes snapshots atomically and rejects stale revisions.
+- Complete workspace backups include ledger/settings, shipment records and warehouse history. Use **Rates & Data → Download Backup** for a portable copy.
+- Restore validates and migrates before changing current state. Legacy register-only backups are supported; their missing shipment/warehouse history cannot be reconstructed.
+- Unsynced caches are bound to a workspace identity. A conflict preserves the recovery copy and pauses writes; download it before reloading and reconciling.
+- `?storage=browser` opens an explicitly labelled sandbox using a separate cache key and no disk writes.
+- Disk snapshots on this machine are not protection against losing the machine. Keep separate backup copies.
 
----
+Closing the browser leaves the background server running. For a foreground server that stops with Ctrl+C, use `pnpm build` then `pnpm serve`. For a launcher-started server, `.data/.server.lock` records its PID; verify that PID belongs to this project's `tools/server.mjs` before stopping it. Never delete snapshots to restart the app.
+
+Old `file://` browser data does not automatically move to a localhost origin. Open the old version, download its backup and restore it here. The original source is retained in Git at [the audited baseline](https://github.com/nre17/Buddy-Audit/tree/f0f0fdb5cc506bfd3dfc0c465395c165c2bae4ce).
 
 ## Development
 
-```bash
-npm install                  # installs playwright (development only)
-npx playwright install chromium
-npm test                     # full regression suite, 50 cases
-node tools/pii-scan.js       # production-data guard
+```powershell
+pnpm build               # source → dist
+pnpm start               # build, serve locally, open browser
+pnpm test                # build + server tests + browser regressions
+pnpm verify              # data-pattern guard + build + all tests
+pnpm test:one 14-domain   # one browser spec (build first)
 ```
 
-The suite drives a real headless Chromium against the actual file and asserts on
-behaviour, not on source text. It covers charge auto-application, storage day
-maths, payment-mode rules, the register, the lying-list lifecycle, cash
-reconciliation, facility security, the Shipment Database and AWB-first entry, the
-billing party, and the three legacy-data migrations.
+Browser tests use isolated contexts and temporary HTTP servers. Install test Chromium with `pnpm exec playwright install chromium`, or set `CHROMIUM_PATH`; the harness also detects installed Chrome/Edge on Windows. No tests write to the working `.data` directory.
 
-**Run `npm test` before and after every change.** This application has no type
-system and no framework; the suite is the only safety net.
-
-Read `CLAUDE.md` before editing. The important rules in brief:
-
-- It must stay one self-contained file (no external assets, no `fetch`).
-- ES5 only, to match the existing code.
-- Any change to a persisted shape needs a migration in `load()`.
-- Never commit customer, staff or banking data. Run `npm run scan` first.
-- Do not read the customer master or the embedded logo line; they will consume
-  your entire context for no benefit. Use `fixtures/customers.demo.json`
-  and `docs/04-code-map.md` instead.
-
----
-
-## Data protection
-
-**This repository holds demo data only.**
-
-| | |
-|---|---|
-| Customer master | 1,892 **fictional** companies, each with a fake TRN and address, generated by `tools/generate-customers.py` and listed on the Customer Database tab. Emails use the RFC 2606 reserved `.example` TLD; telephone numbers contain `555`. |
-| Bank details, company TRN | Invented sample bank details and a `"Not configured"` TRN in source. The real ones are site configuration, entered per counter machine under **Rates & Data → Company & Bank Details** and stored in that browser only. |
-| Counter staff | `Counter 1` … `Counter 6`. |
-| Commercial tariff | Genuine. Confidential business information, though not personal data. |
-| Shipment manifests | Pasted into the Shipment Database on the counter machine and stored in that browser only. `.gitignore` and CI block `.csv`, `.tsv`, `.xlsx` and `.xls` files. |
-
-Enforced by `tools/pii-scan.js`, which runs in CI on every push:
-
-```bash
-npm run scan
+```text
+src/core/       runtime, boot, schema/migrations and persistence
+src/domain/     tariff catalogue
+src/features/   shipment, advice, register, warehouse and reporting modules
+src/ui/         shell, search, record drawers and dialogs
+src/styles/     shared and workspace styles; print layout
+src/data/       generated master import, sample data and branding
+tools/          build, launcher, local server, repository guard
+tests/          server and browser behavior tests
+fixtures/       fictional demonstration data
+docs/revamp/    audit, decisions, knowledge map and roadmap
 ```
 
-Also required:
+ES modules currently share an explicit `app` runtime. A compatibility bridge keeps the existing regression suite useful. The next architecture step is extracting pure domain calculations and validated commands; the current source layout makes that work tractable.
 
-- **Keep this repository private.** The tariff and the process design are
-  confidential.
-- Never commit a `localStorage` backup — those are exports from a counter
-  machine. `.gitignore` blocks `*.backup.json` and `data/`.
-- Never paste customer records or rate tables into an issue, PR, commit message
-  or third-party tool.
+## Current scope
 
-The full policy, including the incident procedure, is in
-[`docs/08-data-protection.md`](docs/08-data-protection.md).
+This is a local prototype with a synthetic customer master. Tariff behavior is preserved from the audited application. Staff selection is attribution, not authentication. Formal cargo acceptance, ULD inventory, actual movement evidence, authoritative customer integration, immutable financial records and ERP/payment settlement remain future work. See the [prioritized roadmap](docs/revamp/README.md#prioritized-next-work).
 
----
+The source still contains the inherited commercial tariff. Repository visibility is controlled by this fork's owner. Runtime data and backups are ignored by Git; the structural data scanner is a useful check, not proof that every file is free of confidential information.
 
-## Governance
-
-Change classes, review requirements, the release and rollback procedure, the risk
-register and the decision log are in
-[`docs/09-governance.md`](docs/09-governance.md).
-
-In short: branch, change one thing, `npm run verify`, open a PR. Tariff and
-business-rule changes need the system owner's approval recorded in the PR and
-must not be mixed with other work.
-
-Note that branch protection is not available on a private repository on the free
-GitHub plan, so that flow is a convention the team keeps rather than a rule the
-platform enforces. CI still runs on every push and pull request. See
-[`docs/09-governance.md`](docs/09-governance.md) §3.4 and risk R-08.
-
----
-
-## Operations
-
-Data lives only in one browser on one machine. There is no server and no
-automatic backup. **Losing that browser profile loses every invoice.**
-
-The mandatory daily backup procedure, the recovery procedure, and the process for
-rolling a new version out to counter staff are in
-[`docs/06-operations-runbook.md`](docs/06-operations-runbook.md). Read it before
-deploying anything.
-
----
-
-## Known issues
-
-Findings from two audit passes, prioritised by severity with reproduction steps
-and suggested fixes, are in
-[`docs/05-audit-findings.md`](docs/05-audit-findings.md). Seven are closed. The
-two that matter most are both still open:
-
-- **A-01** No automatic backup; total data loss is one browser-cache clear away.
-- **A-02** Invoice reference numbers do not restart daily despite the date-prefixed
-  format implying they do.
-
----
-
-## Licence
-
-Proprietary. © SolitAir Cargo Express Services DWC-LLC. Internal use only.
+Historical numbered documents under `docs/` describe the original prototype and decisions. Current operational and development instructions are this README and `docs/revamp/`.

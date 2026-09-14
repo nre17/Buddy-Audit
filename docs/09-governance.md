@@ -1,5 +1,7 @@
 # 09 — Governance
 
+> Historical prototype reference (baseline `f0f0fdb`). The owner authorized a full revamp. Single-file, deployment, storage and governance instructions here are superseded; use the [current review](revamp/README.md) and [root README](../README.md). Treat business rules as baseline evidence and verify current behavior in source/tests.
+
 How changes to this system are proposed, reviewed, released and recorded.
 
 This is a small system run by a small team. The controls below are deliberately

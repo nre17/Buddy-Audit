@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
+dist/
+.data/
 
 # Test output
 tests/output/
@@ -12,7 +13,10 @@ test-results/
 # --- NEVER COMMIT LIVE DATA ---
 # localStorage exports contain real customer invoices, names and amounts.
 *.backup.json
-data/
+SolitAir_Invoicing_Backup_*.json
+SolitAir_Workspace_*.json
+SolitAir_Security_*.json
+/data/
 *-live.json
 solitair_db*.json
 

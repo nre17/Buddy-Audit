@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SolitAir — Cargo Operations</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23102032'/%3E%3Cpath d='M7 23L24 8l-5 17-5-7z' fill='%238df0c1'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./assets/app.css">
+</head>
+<body>
+
+<div class="hdr noprint">
+  <div class="brand" id="brandBox">
+    <img id="brandLogo" alt="SolitAir" style="display:none">
+    <div id="brandText">SOLITAIR CARGO<span>Imports/Exports</span></div>
+  </div>
+  <div class="tabs">
+    <button data-p="shipments">Shipment Database</button>
+    <button data-p="customers">Customer Database</button>
+    <button data-p="export" class="on">Export Advice</button>
+    <button data-p="import">Import Advice</button>
+    <button data-p="lying">Lying List</button>
+    <button data-p="register">Invoice Register</button>
+    <button data-p="handover">Shift Handover</button>
+    <button data-p="dash">Dashboard</button>
+    <button data-p="admin">Rates &amp; Data</button>
+    <button data-p="security">Facility Security</button>
+  </div>
+  <div class="hdr-right">
+    <label style="opacity:.75">Staff</label>
+    <select id="staff" class="staffsel"></select>
+    <div class="cashchip">CASH ON HAND: AED <span id="cashchip">0.00</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="p-shipments" class="page"></div>
+  <div id="p-customers" class="page"></div>
+  <div id="p-export" class="page on"></div>
+  <div id="p-import" class="page"></div>
+  <div id="p-lying" class="page"></div>
+  <div id="p-register" class="page"></div>
+  <div id="p-handover" class="page"></div>
+  <div id="p-dash" class="page"></div>
+  <div id="p-admin" class="page"></div>
+  <div id="p-security" class="page"></div>
+</div>
+
+<div id="printarea"></div>
+<div id="modal" class="modal"><div class="box"><h3 id="mTitle"></h3><div class="mb" id="mBody"></div><div class="mf" id="mFoot"></div></div></div>
+<div id="toast" class="toast"></div>
+
+<script type="module" src="./assets/app.js"></script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 # Audit Findings
 
+> Historical prototype reference (baseline `f0f0fdb`). The owner authorized a full revamp. Single-file, deployment, storage and governance instructions here are superseded; use the [current review](revamp/README.md) and [root README](../README.md). Treat business rules as baseline evidence and verify current behavior in source/tests.
+
 Full read-through of `app/solitair-invoicing.html`, in two passes.
 
 Every finding was verified against the actual file, not assumed.

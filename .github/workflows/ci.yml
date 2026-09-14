@@ -2,73 +2,34 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'audit/**', 'codex/**']
   pull_request:
 
 jobs:
-  test:
-    name: Regression suite
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run regression suite
-        run: npm test
-
-  guard:
-    name: Repository guards
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Repository data guard
-        run: node tools/pii-scan.js
-
-      - name: Verify the demo customer master is reproducible
+          node-version: 22
+      - name: Install pinned package manager
+        run: npm install --global pnpm@11.19.0
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install test browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Verify application
+        run: pnpm verify
+      - name: Check reproducible demo master
         run: |
-          python3 tools/generate-customers.py > /tmp/regen.json
-          if ! diff -q fixtures/customers.demo.json /tmp/regen.json > /dev/null; then
-            echo "::error::fixtures/customers.demo.json does not match the generator output."
-            echo "Regenerate it with: python3 tools/generate-customers.py > fixtures/customers.demo.json"
-            exit 1
-          fi
-          echo "Demo master matches its generator."
-
-      - name: Block counter-machine backups and shipment manifests
+          python3 tools/generate-customers.py > /tmp/customers.demo.json
+          diff -q fixtures/customers.demo.json /tmp/customers.demo.json
+      - name: Block runtime data and generated output
+        shell: bash
         run: |
-          if git ls-files | grep -E '\.backup\.json$|^data/'; then
-            echo "::error::A localStorage backup appears to be committed."
-            echo "These contain customer invoices. See docs/08-data-protection.md."
+          if git ls-files | grep -iE '^(\.data|data|dist)/|\.backup\.json$|SolitAir_(Invoicing_Backup|Workspace|Security)_.*\.json$|\.(csv|tsv|xlsx|xls)$'; then
+            echo 'Runtime data, backups, manifests and generated builds must stay outside commits.'
             exit 1
           fi
-          if git ls-files | grep -iE '\.(csv|tsv|xlsx|xls)$'; then
-            echo "::error::A spreadsheet or CSV file appears to be committed."
-            echo "Shipment manifests name real customers and shipments. See docs/08-data-protection.md."
-            exit 1
-          fi
-          echo "No backup or manifest files committed."
-
-      - name: Check the app is still a single self-contained file
-        run: |
-          F=app/solitair-invoicing.html
-          if grep -nE '<script[^>]+src=|<link[^>]+href="http' "$F"; then
-            echo "::error::External asset reference found. The app must run offline from file://."
-            exit 1
-          fi
-          echo "No external asset references."

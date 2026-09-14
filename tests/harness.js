@@ -1,15 +1,37 @@
 /*
- * Minimal zero-config test harness for the SolitAir invoicing app.
+ * Browser integration harness for the built SolitAir workspace.
  *
- * Deliberately not using @playwright/test: this project has no build step and no
- * framework, and the suite must stay as easy to read and run as the app itself.
- * We only need: launch a real browser, drive the real file, assert, report.
+ * Deliberately not using @playwright/test: the suite only needs an isolated HTTP
+ * sandbox, a real browser, assertions, and a report. Run the app build first.
  */
 const path = require("path");
+const fs = require("node:fs");
+const http = require("node:http");
+const net = require("node:net");
 const { chromium } = require("playwright");
 
-const APP_PATH = path.resolve(__dirname, "..", "app", "solitair-invoicing.html");
-const APP_URL = "file://" + APP_PATH;
+const APP_PATH = path.resolve(__dirname, "..", "dist", "index.html");
+let APP_URL = process.env.APP_URL || '';
+let serverPromise;
+async function testUrl() {
+  if (APP_URL) return APP_URL;
+  if (!serverPromise) serverPromise = new Promise((resolve, reject) => {
+    const root = path.dirname(APP_PATH);
+    const server = http.createServer((request, response) => {
+      const url = new URL(request.url, 'http://localhost');
+      const file = path.resolve(root, '.' + (url.pathname === '/' ? '/index.html' : url.pathname));
+      if (!file.startsWith(root + path.sep)) {response.writeHead(403).end(); return;}
+      fs.readFile(file, (error, data) => {
+        if (error) {response.writeHead(404).end(); return;}
+        response.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html');
+        response.end(data);
+      });
+    });
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {server.unref(); APP_URL = 'http://127.0.0.1:' + server.address().port + '/?storage=browser'; resolve(APP_URL);});
+  });
+  return serverPromise;
+}
 
 /*
  * Test customers come from the demo master, never from a literal typed into a
@@ -108,6 +130,82 @@ function notContains(haystack, needle, message) {
 
 /* ---------- browser lifecycle ---------- */
 
+async function bounded(promise, milliseconds, label) {
+  let timer;
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(label + " timed out after " + milliseconds + "ms")), milliseconds);
+    })]);
+  } finally { clearTimeout(timer); }
+}
+
+function processExists(pid) {
+  try { process.kill(pid, 0); return true; }
+  catch (error) { if (error.code === "ESRCH") return false; throw error; }
+}
+
+function browserEndpointClosed(endpoint) {
+  const url = new URL(endpoint);
+  return new Promise(resolve => {
+    const socket = net.createConnection({ host: url.hostname, port: Number(url.port) });
+    const finish = closed => { socket.destroy(); resolve(closed); };
+    socket.setTimeout(1000, () => finish(false));
+    socket.once("connect", () => finish(false));
+    socket.once("error", error => finish(error.code === "ECONNREFUSED"));
+  });
+}
+
+/** Own the browser process explicitly so a system Chrome shutdown cannot freeze
+ * the suite. Windows Chrome can stop responding after contexts have closed;
+ * Playwright's taskkill fallback can also leave its Node child watcher pending.
+ * ChildProcess.kill signals that exact owned process and completes its watcher.
+ * No browser outside this fixture is selected or terminated. */
+async function launchTestBrowser() {
+  const installedBrowser = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(p => fs.existsSync(p));
+  const browserServer = await chromium.launchServer({
+    args: ["--no-sandbox"],
+    executablePath: process.env.CHROMIUM_PATH || (fs.existsSync(chromium.executablePath()) ? undefined : installedBrowser),
+  });
+  const child = browserServer.process();
+  let browser, closed = false;
+  async function close() {
+    if (closed) return;
+    closed = true;
+    let connectionError;
+    if (browser) {
+      try {
+        await bounded(Promise.all(browser.contexts().map(context => context.close())), 10000, "Browser context cleanup");
+        await bounded(browser.close(), 5000, "Browser connection cleanup");
+      } catch (error) { connectionError = error; }
+    }
+    const closing = browserServer.close();
+    try {
+      await bounded(closing, 5000, "Browser process shutdown");
+    } catch (error) {
+      // Use the public ChildProcess handle, not a name match or unrelated PID.
+      child.kill("SIGKILL");
+      try {
+        await bounded(closing, 5000, "Forced browser process cleanup");
+        if (child.exitCode === null && child.signalCode === null) throw new Error("Browser cleanup did not confirm the owned process exited");
+        console.warn("  [browser cleanup] System browser required forced shutdown; owned process exit and cleanup confirmed (PID " + child.pid + ").");
+      } catch (cleanupError) {
+        // On Windows the process watcher or temporary-profile cleanup can lag.
+        // Accept only independently proven isolation: contexts and connection
+        // closed, no OS process at this owned PID, and its server port released.
+        const exists = processExists(child.pid);
+        const endpointClosed = await browserEndpointClosed(browserServer.wsEndpoint());
+        const evidence = "PID " + child.pid + ", OS process exists=" + exists + ", browser endpoint closed=" + endpointClosed + ", exitCode=" + child.exitCode + ", signalCode=" + child.signalCode;
+        if (connectionError || exists || !endpointClosed) throw new Error(cleanupError.message + " (" + evidence + ")");
+        console.warn("  [browser cleanup] Playwright cleanup notification stalled; process exit and released endpoint verified independently (" + evidence + ").");
+      }
+    }
+    if (connectionError) throw connectionError;
+  }
+  try { browser = await chromium.connect(browserServer.wsEndpoint()); }
+  catch (error) { await close(); throw error; }
+  return { browser, close };
+}
+
 /**
  * Open the app in a fresh browser context with empty localStorage.
  *
@@ -125,10 +223,10 @@ function notContains(haystack, needle, message) {
  */
 async function openApp(opts) {
   opts = opts || {};
-  const browser = await chromium.launch({
-    args: ["--no-sandbox"],
-    executablePath: process.env.CHROMIUM_PATH || undefined,
-  });
+  const url = await testUrl();
+  const fixture = await launchTestBrowser();
+  const browser = fixture.browser;
+  try {
   const context = await browser.newContext({
     timezoneId: opts.timezoneId || "Asia/Dubai",
   });
@@ -140,15 +238,20 @@ async function openApp(opts) {
   // Native confirm() is used by a few destructive actions; auto-accept.
   page.on("dialog", async (d) => { await d.accept(); });
 
-  await page.goto(APP_URL, { waitUntil: "load" });
+  await page.goto(url, { waitUntil: "load" });
+  await page.waitForFunction(() => window.__solitairReady || window.__solitairStartupError);
+  const startupError = await page.evaluate(() => window.__solitairStartupError);
+  if (startupError) throw new Error(startupError);
 
   if (opts.seed) {
     await page.evaluate((seed) => {
+      localStorage.clear();
       for (const k of Object.keys(seed)) {
         localStorage.setItem(k, JSON.stringify(seed[k]));
       }
     }, opts.seed);
     await page.reload({ waitUntil: "load" });
+    await page.waitForFunction(() => window.__solitairReady || window.__solitairStartupError);
   }
 
   if (!opts.firstOpen) {
@@ -172,8 +275,9 @@ async function openApp(opts) {
         "console errors:\n        " + consoleErrors.join("\n        ")
       );
     },
-    async close() { await browser.close(); },
+    close: fixture.close,
   };
+  } catch (error) { await fixture.close(); throw error; }
 }
 
 /* ---------- app-specific helpers ---------- */
@@ -303,7 +407,7 @@ module.exports = {
   APP_URL, APP_PATH,
   SAMPLE_CUSTOMER, OTHER_CUSTOMER, BILLING_CUSTOMER, MANIFEST_HEADER,
   AssertionError, assert, eq, eqMoney, contains, notContains,
-  openApp, tab, localDT, fillAdvice, chargeRow, payMode, saveAdvice,
+  openApp, launchTestBrowser, tab, localDT, fillAdvice, chargeRow, payMode, saveAdvice,
   manifestText, importManifest,
   db, lyingList, modalClick,
 };
